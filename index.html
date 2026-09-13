@@ -15,6 +15,7 @@
 
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script>
@@ -289,6 +290,7 @@
 </script>
 
 <script>
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 /* ============================================================
    TRAVEL PLANNER
    Ferramenta escalável para planejamento de viagens.
@@ -1486,10 +1488,9 @@ function Button({
     danger: 'btn-danger'
   }[variant] || 'btn-ghost';
   const sz = size === 'sm' ? 'btn-sm' : size === 'xs' ? 'btn-xs' : '';
-  return /*#__PURE__*/React.createElement("button", {
-    className: cx('btn', v, sz, className),
-    ...rest
-  }, icon && /*#__PURE__*/React.createElement(Icon, {
+  return /*#__PURE__*/React.createElement("button", _extends({
+    className: cx('btn', v, sz, className)
+  }, rest), icon && /*#__PURE__*/React.createElement(Icon, {
     name: icon,
     size: size === 'xs' ? 12 : 14
   }), children);
@@ -1500,13 +1501,12 @@ function IconButton({
   className = '',
   ...rest
 }) {
-  return /*#__PURE__*/React.createElement("button", {
+  return /*#__PURE__*/React.createElement("button", _extends({
     className: cx('p-2 text-ink-3 hover:text-ink hover:bg-paper transition-colors border border-transparent hover:border-rule', className),
     style: {
       borderRadius: 2
-    },
-    ...rest
-  }, /*#__PURE__*/React.createElement(Icon, {
+    }
+  }, rest), /*#__PURE__*/React.createElement(Icon, {
     name: icon,
     size: size
   }));
@@ -1515,40 +1515,36 @@ function TextInput({
   className = '',
   ...rest
 }) {
-  return /*#__PURE__*/React.createElement("input", {
-    className: cx('field', className),
-    ...rest
-  });
+  return /*#__PURE__*/React.createElement("input", _extends({
+    className: cx('field', className)
+  }, rest));
 }
 function NumberInput({
   className = '',
   ...rest
 }) {
-  return /*#__PURE__*/React.createElement("input", {
+  return /*#__PURE__*/React.createElement("input", _extends({
     type: "number",
     step: "any",
-    className: cx('field num', className),
-    ...rest
-  });
+    className: cx('field num', className)
+  }, rest));
 }
 function TextArea({
   className = '',
   ...rest
 }) {
-  return /*#__PURE__*/React.createElement("textarea", {
-    className: cx('field resize-y', className),
-    ...rest
-  });
+  return /*#__PURE__*/React.createElement("textarea", _extends({
+    className: cx('field resize-y', className)
+  }, rest));
 }
 function Select({
   className = '',
   children,
   ...rest
 }) {
-  return /*#__PURE__*/React.createElement("select", {
-    className: cx('field', className),
-    ...rest
-  }, children);
+  return /*#__PURE__*/React.createElement("select", _extends({
+    className: cx('field', className)
+  }, rest), children);
 }
 function Label({
   children,
@@ -1559,7 +1555,7 @@ function Label({
     className: cx('block text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-1.5', className)
   }, children, hint && /*#__PURE__*/React.createElement("span", {
     className: "ml-1.5 text-ink-4 normal-case tracking-normal italic"
-  }, "· ", hint));
+  }, "\xB7 ", hint));
 }
 function Modal({
   open,
@@ -1812,9 +1808,9 @@ function AppShell() {
     className: "text-sm text-inkm mt-1"
   }, importPreview.destination), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-inkm mt-2 font-mono"
-  }, fmtDate(importPreview.startDate), " → ", fmtDate(importPreview.endDate, {
+  }, fmtDate(importPreview.startDate), " \u2192 ", fmtDate(importPreview.endDate, {
     year: true
-  }), " · ", importPreview.days?.length || 0, " dias"), /*#__PURE__*/React.createElement("div", {
+  }), " \xB7 ", importPreview.days?.length || 0, " dias"), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-inkm mt-3"
   }, "A viagem entra na sua biblioteca. Pode editar depois."))));
 }
@@ -1888,7 +1884,7 @@ function Sidebar({
   }, "planejador de viagens")), /*#__PURE__*/React.createElement("button", {
     onClick: onConvert,
     className: "text-ink-3 hover:text-ink p-1 rounded-lg hover:bg-paper-2",
-    title: "Conversor de câmbio"
+    title: "Conversor de c\xE2mbio"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "refresh",
     size: 16
@@ -1935,7 +1931,7 @@ function Sidebar({
       setSwitcherOpen(false);
     },
     className: "w-full text-left px-4 py-3 border-t border-rule text-sm font-semibold hover:bg-paper-2 transition-colors text-accent"
-  }, "Ver todas as viagens →"))), /*#__PURE__*/React.createElement("nav", {
+  }, "Ver todas as viagens \u2192"))), /*#__PURE__*/React.createElement("nav", {
     className: "flex-1 mt-6 px-3 overflow-y-auto space-y-1"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] uppercase tracking-wider text-ink-3 font-bold px-3 mb-2"
@@ -1965,7 +1961,7 @@ function Sidebar({
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "money",
     size: 17
-  }), /*#__PURE__*/React.createElement("span", null, "Câmbio"))));
+  }), /*#__PURE__*/React.createElement("span", null, "C\xE2mbio"))));
 }
 function MobileTopBar({
   trip,
@@ -2216,7 +2212,7 @@ function LibraryView({
     size: "sm",
     icon: "refresh",
     onClick: onConvert
-  }, "Câmbio"), /*#__PURE__*/React.createElement(Button, {
+  }, "C\xE2mbio"), /*#__PURE__*/React.createElement(Button, {
     variant: "accent",
     size: "sm",
     icon: "plus",
@@ -2227,7 +2223,7 @@ function LibraryView({
     className: "text-4xl sm:text-5xl lg:text-6xl font-black text-ink leading-tight tracking-tight"
   }, "Suas viagens"), /*#__PURE__*/React.createElement("p", {
     className: "text-base sm:text-lg text-ink-2 mt-4 max-w-xl leading-relaxed"
-  }, "Todas as viagens em um só lugar. Do primeiro esboço até o último check-in — orçamento, roteiro, cotações e checklist."), /*#__PURE__*/React.createElement("div", {
+  }, "Todas as viagens em um s\xF3 lugar. Do primeiro esbo\xE7o at\xE9 o \xFAltimo check-in \u2014 or\xE7amento, roteiro, cota\xE7\xF5es e checklist."), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center gap-3 mt-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "chip chip-ink"
@@ -2317,7 +2313,7 @@ function TripCard({
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "calendar",
     size: 12
-  }), /*#__PURE__*/React.createElement("span", null, fmtDate(trip.startDate), " → ", fmtDate(trip.endDate, {
+  }), /*#__PURE__*/React.createElement("span", null, fmtDate(trip.startDate), " \u2192 ", fmtDate(trip.endDate, {
     year: true
   })))), /*#__PURE__*/React.createElement("span", {
     className: cx('chip', status.cls)
@@ -2373,7 +2369,7 @@ function TripCard({
     className: "flex items-baseline justify-between mb-1.5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-ink-3 font-medium"
-  }, "Orçamento"), /*#__PURE__*/React.createElement("div", {
+  }, "Or\xE7amento"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm font-semibold num"
   }, /*#__PURE__*/React.createElement("span", {
     className: cx(overBudget && 'text-bad')
@@ -2528,7 +2524,7 @@ function NewTripWizard({
     }, "Cancelar"), /*#__PURE__*/React.createElement(Button, {
       variant: "primary",
       onClick: () => setStep(1)
-    }, "Próximo")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+    }, "Pr\xF3ximo")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
       onClick: () => setStep(0)
     }, "Voltar"), /*#__PURE__*/React.createElement(Button, {
       variant: "primary",
@@ -2577,7 +2573,7 @@ function NewTripWizard({
       ...form,
       name: e.target.value
     }),
-    placeholder: "Ex: Uruguai · verão 2027",
+    placeholder: "Ex: Uruguai \xB7 ver\xE3o 2027",
     autoFocus: true
   })), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
@@ -2587,7 +2583,7 @@ function NewTripWizard({
       ...form,
       destination: e.target.value
     }),
-    placeholder: "Cidade, região ou país"
+    placeholder: "Cidade, regi\xE3o ou pa\xEDs"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Data de ida"), /*#__PURE__*/React.createElement(TextInput, {
     type: "date",
     value: form.startDate,
@@ -2612,7 +2608,7 @@ function NewTripWizard({
   }, CURRENCIES.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.code,
     value: c.code
-  }, c.code, " — ", c.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Teto de orçamento"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, c.code, " \u2014 ", c.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Teto de or\xE7amento"), /*#__PURE__*/React.createElement(NumberInput, {
     value: form.budgetCeiling,
     onChange: e => setForm({
       ...form,
@@ -2623,7 +2619,7 @@ function NewTripWizard({
     className: "sm:col-span-2"
   }, /*#__PURE__*/React.createElement(Label, {
     hint: "opcional"
-  }, "Moedas secundárias"), /*#__PURE__*/React.createElement("div", {
+  }, "Moedas secund\xE1rias"), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-1.5"
   }, CURRENCIES.filter(c => c.code !== form.baseCurrency).map(c => {
     const on = form.secondaryCurrencies.includes(c.code);
@@ -2763,7 +2759,7 @@ function TripHeader({
     name: "calendar",
     size: 14,
     className: "text-ink-3"
-  }), fmtDate(trip.startDate), " → ", fmtDate(trip.endDate, {
+  }), fmtDate(trip.startDate), " \u2192 ", fmtDate(trip.endDate, {
     year: true
   })), /*#__PURE__*/React.createElement("span", {
     className: "w-1 h-1 rounded-full bg-ink-4"
@@ -2792,13 +2788,13 @@ function TripHeader({
   }), /*#__PURE__*/React.createElement(IconButton, {
     icon: "settings",
     onClick: () => setSettings(true),
-    title: "Configurações"
+    title: "Configura\xE7\xF5es"
   }))), copied && /*#__PURE__*/React.createElement("div", {
     className: "fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white text-sm px-5 py-3 z-50 fade-in font-medium rounded-lg",
     style: {
       boxShadow: 'var(--shadow-lg)'
     }
-  }, "Link copiado ✓"), /*#__PURE__*/React.createElement(TripEditModal, {
+  }, "Link copiado \u2713"), /*#__PURE__*/React.createElement(TripEditModal, {
     open: editing,
     onClose: () => setEditing(false),
     trip: trip
@@ -2876,7 +2872,7 @@ function TripEditModal({
     })
   })), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
-  }, /*#__PURE__*/React.createElement(Label, null, "Teto de orçamento (", f.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, /*#__PURE__*/React.createElement(Label, null, "Teto de or\xE7amento (", f.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.budgetCeiling,
     onChange: e => setF({
       ...f,
@@ -2908,7 +2904,7 @@ function TripSettingsModal({
   return /*#__PURE__*/React.createElement(Modal, {
     open: open,
     onClose: onClose,
-    title: "Configurações da viagem",
+    title: "Configura\xE7\xF5es da viagem",
     size: "lg",
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
       onClick: onClose
@@ -2928,7 +2924,7 @@ function TripSettingsModal({
   }, CURRENCIES.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.code,
     value: c.code
-  }, c.code, " — ", c.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Moedas secundárias"), /*#__PURE__*/React.createElement("div", {
+  }, c.code, " \u2014 ", c.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Moedas secund\xE1rias"), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-1.5"
   }, CURRENCIES.filter(c => c.code !== f.baseCurrency).map(c => {
     const on = f.secondaryCurrencies.includes(c.code);
@@ -3026,11 +3022,11 @@ function DashboardTab({
     sub: trip.budgetCeiling ? `${pctSpent}% do teto` : 'sem teto',
     tone: pctSpent > 100 ? 'bad' : pctSpent > 80 ? 'warn' : 'ink'
   }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Orçado",
+    label: "Or\xE7ado",
     value: fmtMoneyCompact(budgetedTotal, trip.baseCurrency),
     sub: "soma das categorias"
   }), /*#__PURE__*/React.createElement(StatCard, {
-    label: "Pendências",
+    label: "Pend\xEAncias",
     value: trip.checklist.filter(c => !c.done).length,
     sub: pendingCritical ? `${pendingCritical} críticas` : 'sem urgência',
     tone: pendingCritical ? 'bad' : 'ok'
@@ -3044,12 +3040,12 @@ function DashboardTab({
     className: "flex items-baseline justify-between mb-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "text-[9px] font-semibold uppercase tracking-wider text-ink-4"
-  }, "Ledger · orçamento"), /*#__PURE__*/React.createElement("h3", {
+  }, "Ledger \xB7 or\xE7amento"), /*#__PURE__*/React.createElement("h3", {
     className: "font-bold text-2xl mt-0.5"
   }, "Onde o dinheiro vai")), /*#__PURE__*/React.createElement(Button, {
     size: "xs",
     onClick: () => onGo('budget')
-  }, "Detalhar →")), /*#__PURE__*/React.createElement("div", {
+  }, "Detalhar \u2192")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-end justify-between mb-2 gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "text-[9px] font-semibold uppercase tracking-wider text-ink-4"
@@ -3115,12 +3111,12 @@ function DashboardTab({
     className: "flex items-baseline justify-between mb-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "text-[9px] font-semibold uppercase tracking-wider text-ink-4"
-  }, "Próximas paradas"), /*#__PURE__*/React.createElement("h3", {
+  }, "Pr\xF3ximas paradas"), /*#__PURE__*/React.createElement("h3", {
     className: "font-bold text-2xl mt-0.5"
-  }, "O que vem por aí")), /*#__PURE__*/React.createElement(Button, {
+  }, "O que vem por a\xED")), /*#__PURE__*/React.createElement(Button, {
     size: "xs",
     onClick: () => onGo('itinerary')
-  }, "Roteiro →")), nextDays.length === 0 ? /*#__PURE__*/React.createElement("p", {
+  }, "Roteiro \u2192")), nextDays.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-ink-3 italic"
   }, "Nada mais no roteiro.") : /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
@@ -3162,7 +3158,7 @@ function DashboardTab({
     className: "text-[9px] font-semibold uppercase tracking-wider text-ink-4"
   }, "Prazos"), /*#__PURE__*/React.createElement("h3", {
     className: "font-bold text-xl mt-0.5"
-  }, "Próximas ações")), /*#__PURE__*/React.createElement(Button, {
+  }, "Pr\xF3ximas a\xE7\xF5es")), /*#__PURE__*/React.createElement(Button, {
     size: "xs",
     onClick: () => onGo('checklist')
   }, "Todas")), pendingSoon.length === 0 ? /*#__PURE__*/React.createElement("p", {
@@ -3195,13 +3191,13 @@ function DashboardTab({
     className: "text-[9px] font-semibold uppercase tracking-wider text-ink-4"
   }, "Live"), /*#__PURE__*/React.createElement("h3", {
     className: "font-bold text-xl mt-0.5"
-  }, "Câmbio")), /*#__PURE__*/React.createElement(IconButton, {
+  }, "C\xE2mbio")), /*#__PURE__*/React.createElement(IconButton, {
     icon: "refresh",
     onClick: fx.refresh,
     title: "Atualizar"
   })), !fx.rates ? /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-ink-3"
-  }, "Sem cotação disponível.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("ul", {
+  }, "Sem cota\xE7\xE3o dispon\xEDvel.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("ul", {
     className: "text-xs space-y-1.5 font-mono"
   }, [trip.baseCurrency, ...trip.secondaryCurrencies].filter((c, i, a) => a.indexOf(c) === i).map(code => {
     if (code === trip.baseCurrency) return null;
@@ -3228,7 +3224,7 @@ function DashboardTab({
     className: "card p-5 fade-in-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[9px] font-semibold uppercase tracking-wider text-ink-4 mb-2"
-  }, "Diário"), /*#__PURE__*/React.createElement("p", {
+  }, "Di\xE1rio"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-ink-2 whitespace-pre-wrap leading-relaxed italic"
   }, "\"", trip.notes.slice(0, 200), trip.notes.length > 200 ? '…' : '', "\""), /*#__PURE__*/React.createElement(Button, {
     size: "xs",
@@ -3265,7 +3261,7 @@ function WeatherCard({
       className: "text-sm font-semibold text-ink mb-1"
     }, "Clima"), /*#__PURE__*/React.createElement("p", {
       className: "text-xs text-inkm"
-    }, "Previsão disponível 16 dias antes da viagem (faltam ", daysAhead, ")."));
+    }, "Previs\xE3o dispon\xEDvel 16 dias antes da viagem (faltam ", daysAhead, ")."));
   }
   if (loading) return /*#__PURE__*/React.createElement("div", {
     className: "card p-5"
@@ -3273,7 +3269,7 @@ function WeatherCard({
     className: "text-sm font-semibold text-ink mb-1"
   }, "Clima"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-inkm"
-  }, "Carregando…"));
+  }, "Carregando\u2026"));
   if (!wx || !wx.daily) return null;
   return /*#__PURE__*/React.createElement("div", {
     className: "card p-5"
@@ -3288,9 +3284,9 @@ function WeatherCard({
     className: "text-inkm"
   }, fmtDate(d)), /*#__PURE__*/React.createElement("span", {
     className: "num"
-  }, Math.round(wx.daily.temperature_2m_min[i]), "° / ", /*#__PURE__*/React.createElement("span", {
+  }, Math.round(wx.daily.temperature_2m_min[i]), "\xB0 / ", /*#__PURE__*/React.createElement("span", {
     className: "text-ink font-medium"
-  }, Math.round(wx.daily.temperature_2m_max[i]), "°"))))));
+  }, Math.round(wx.daily.temperature_2m_max[i]), "\xB0"))))));
 }
 function computeSpent(trip, fx) {
   let total = 0;
@@ -3359,7 +3355,7 @@ function BudgetTab({
   }))), /*#__PURE__*/React.createElement("div", {
     className: "hairline mt-4 pt-4 flex items-center gap-2"
   }, /*#__PURE__*/React.createElement(TextInput, {
-    placeholder: "Nova categoria…",
+    placeholder: "Nova categoria\u2026",
     value: newCatName,
     onChange: e => setNewCatName(e.target.value),
     onKeyDown: e => {
@@ -3390,7 +3386,7 @@ function BudgetTab({
     className: "flex justify-between text-xs mb-1"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-inkm"
-  }, "Orçado"), /*#__PURE__*/React.createElement("span", {
+  }, "Or\xE7ado"), /*#__PURE__*/React.createElement("span", {
     className: "num"
   }, fmtMoney(budgetedTotal, trip.baseCurrency, {
     digits: 0
@@ -3416,7 +3412,7 @@ function BudgetTab({
       value: spentByCategory(trip, c.id, fx),
       color: c.color
     })),
-    title: "Distribuição dos gastos"
+    title: "Distribui\xE7\xE3o dos gastos"
   })), ceilingEdit && /*#__PURE__*/React.createElement(CeilingEditModal, {
     trip: trip,
     onClose: () => setCeilingEdit(false)
@@ -3525,7 +3521,7 @@ function CategoryEditModal({
       ...f,
       name: e.target.value
     })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor orçado (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor or\xE7ado (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.budgeted,
     onChange: e => setF({
       ...f,
@@ -3564,7 +3560,7 @@ function CeilingEditModal({
   return /*#__PURE__*/React.createElement(Modal, {
     open: true,
     onClose: onClose,
-    title: "Teto de orçamento",
+    title: "Teto de or\xE7amento",
     size: "sm",
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
       onClick: onClose
@@ -3578,7 +3574,7 @@ function CeilingEditModal({
         onClose();
       }
     }, "Salvar"))
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor máximo (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor m\xE1ximo (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
     value: v,
     onChange: e => setV(e.target.value),
     autoFocus: true
@@ -3682,7 +3678,7 @@ function ItineraryTab({
   const collapseAll = () => setExpanded(new Set());
   const sortedDays = trip.days.slice().sort((a, b) => a.date.localeCompare(b.date));
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
-    eyebrow: "Módulo · Roteiro",
+    eyebrow: "M\xF3dulo \xB7 Roteiro",
     title: "Dia a dia",
     action: /*#__PURE__*/React.createElement("div", {
       className: "flex items-center gap-1.5 flex-wrap"
@@ -3756,7 +3752,7 @@ function AddDayModal({
     value: date,
     onChange: e => setDate(e.target.value),
     autoFocus: true
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Título (opcional)"), /*#__PURE__*/React.createElement(TextInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "T\xEDtulo (opcional)"), /*#__PURE__*/React.createElement(TextInput, {
     value: title,
     onChange: e => setTitle(e.target.value),
     placeholder: "Ex: Chegada em Punta"
@@ -3818,19 +3814,19 @@ function DayCard({
     className: "flex items-center gap-2 mb-1"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[11px] uppercase tracking-wider text-ink-3 font-semibold"
-  }, fmtDow(day.date), " · Dia ", idx + 1), allDone && /*#__PURE__*/React.createElement("span", {
+  }, fmtDow(day.date), " \xB7 Dia ", idx + 1), allDone && /*#__PURE__*/React.createElement("span", {
     className: "chip chip-ok text-[10px]"
   }, "Completo")), day.title ? /*#__PURE__*/React.createElement("h3", {
     className: "text-lg sm:text-xl font-bold text-ink leading-tight"
   }, day.title) : /*#__PURE__*/React.createElement("h3", {
     className: "text-base text-ink-3"
-  }, "Sem título"), /*#__PURE__*/React.createElement("div", {
+  }, "Sem t\xEDtulo"), /*#__PURE__*/React.createElement("div", {
     className: "mt-1 flex items-center gap-3 text-xs text-ink-3 flex-wrap"
-  }, day.blocks.length > 0 && /*#__PURE__*/React.createElement("span", null, day.blocks.length, " ", day.blocks.length === 1 ? 'atividade' : 'atividades'), day.blocks.length > 0 && /*#__PURE__*/React.createElement("span", null, doneCount, "/", day.blocks.length, " concluídas"), dayCost > 0 && /*#__PURE__*/React.createElement("span", {
+  }, day.blocks.length > 0 && /*#__PURE__*/React.createElement("span", null, day.blocks.length, " ", day.blocks.length === 1 ? 'atividade' : 'atividades'), day.blocks.length > 0 && /*#__PURE__*/React.createElement("span", null, doneCount, "/", day.blocks.length, " conclu\xEDdas"), dayCost > 0 && /*#__PURE__*/React.createElement("span", {
     className: "font-semibold text-ink"
   }, fmtMoneyCompact(dayCost, trip.baseCurrency))), !expanded && day.blocks[0] && /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-ink-3 truncate mt-2"
-  }, "→ ", day.blocks[0].time && `${day.blocks[0].time}  `, day.blocks[0].title)), /*#__PURE__*/React.createElement("div", {
+  }, "\u2192 ", day.blocks[0].time && `${day.blocks[0].time}  `, day.blocks[0].title)), /*#__PURE__*/React.createElement("div", {
     className: "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-paper-2"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: expanded ? 'chevronUp' : 'chevronDown',
@@ -3916,7 +3912,7 @@ function DayEditModal({
       ...f,
       date: e.target.value
     })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Título"), /*#__PURE__*/React.createElement(TextInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "T\xEDtulo"), /*#__PURE__*/React.createElement(TextInput, {
     value: f.title,
     onChange: e => setF({
       ...f,
@@ -3982,13 +3978,13 @@ function BlockRow({
     className: "text-xs font-mono font-medium text-ink"
   }, block.time) : /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] text-ink-3"
-  }, "—:—")), /*#__PURE__*/React.createElement("div", {
+  }, "\u2014:\u2014")), /*#__PURE__*/React.createElement("div", {
     className: "flex-1 min-w-0"
   }, /*#__PURE__*/React.createElement("div", {
     className: cx('text-sm text-ink font-medium leading-snug', block.done && 'line-through')
   }, block.title || /*#__PURE__*/React.createElement("em", {
     className: "text-ink-4"
-  }, "sem título")), (block.location || block.link) && /*#__PURE__*/React.createElement("div", {
+  }, "sem t\xEDtulo")), (block.location || block.link) && /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-ink-3 mt-1 flex items-center gap-3 flex-wrap"
   }, block.location && /*#__PURE__*/React.createElement("span", {
     className: "flex items-center gap-1"
@@ -4093,13 +4089,13 @@ function BlockModal({
     className: "grid grid-cols-1 sm:grid-cols-2 gap-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
-  }, /*#__PURE__*/React.createElement(Label, null, "Título"), /*#__PURE__*/React.createElement(TextInput, {
+  }, /*#__PURE__*/React.createElement(Label, null, "T\xEDtulo"), /*#__PURE__*/React.createElement(TextInput, {
     value: f.title,
     onChange: e => setF({
       ...f,
       title: e.target.value
     }),
-    placeholder: "Ex: Almoço no Mercado del Puerto",
+    placeholder: "Ex: Almo\xE7o no Mercado del Puerto",
     autoFocus: true
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Hora"), /*#__PURE__*/React.createElement(TextInput, {
     type: "time",
@@ -4114,7 +4110,7 @@ function BlockModal({
       ...f,
       location: e.target.value
     }),
-    placeholder: "Endereço, bairro ou ponto"
+    placeholder: "Endere\xE7o, bairro ou ponto"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Custo"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.cost ?? '',
     onChange: e => setF({
@@ -4139,7 +4135,7 @@ function BlockModal({
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "— nenhuma —"), trip.categories.map(c => /*#__PURE__*/React.createElement("option", {
+  }, "\u2014 nenhuma \u2014"), trip.categories.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.id,
     value: c.id
   }, c.name)))), trip.travelers.length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Quem pagou"), /*#__PURE__*/React.createElement(Select, {
@@ -4150,13 +4146,13 @@ function BlockModal({
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "— não especificado —"), trip.travelers.map(t => /*#__PURE__*/React.createElement("option", {
+  }, "\u2014 n\xE3o especificado \u2014"), trip.travelers.map(t => /*#__PURE__*/React.createElement("option", {
     key: t.id,
     value: t.id
   }, t.name)))), trip.travelers.length > 1 && /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
   }, /*#__PURE__*/React.createElement(Label, {
-    hint: "marcar quem participa da divisão"
+    hint: "marcar quem participa da divis\xE3o"
   }, "Dividir entre"), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-1.5"
   }, trip.travelers.map(t => {
@@ -4183,7 +4179,7 @@ function BlockModal({
       ...f,
       link: e.target.value
     }),
-    placeholder: "https://…"
+    placeholder: "https://\u2026"
   })), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
   }, /*#__PURE__*/React.createElement(Label, null, "Notas"), /*#__PURE__*/React.createElement(TextArea, {
@@ -4247,7 +4243,7 @@ function ChecklistTab({
   }, /*#__PURE__*/React.createElement(TextInput, {
     value: newText,
     onChange: e => setNewText(e.target.value),
-    placeholder: "Novo item…",
+    placeholder: "Novo item\u2026",
     onKeyDown: e => {
       if (e.key === 'Enter') add(phase.id);
       if (e.key === 'Escape') {
@@ -4305,7 +4301,7 @@ function ChecklistItemRow({
     className: cx('text-sm', item.done && 'line-through text-inkm')
   }, item.critical && !item.done && /*#__PURE__*/React.createElement("span", {
     className: "text-bad mr-1"
-  }, "★"), item.text), (item.deadline || item.notes) && /*#__PURE__*/React.createElement("div", {
+  }, "\u2605"), item.text), (item.deadline || item.notes) && /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-inkm mt-0.5 flex items-center gap-2 flex-wrap"
   }, item.deadline && /*#__PURE__*/React.createElement("span", {
     className: cx('flex items-center gap-1', overdue && 'text-bad', soon && 'text-warn')
@@ -4316,7 +4312,7 @@ function ChecklistItemRow({
     year: true
   }), daysLeft != null && !item.done && ` (${daysLeft >= 0 ? `${daysLeft}d` : `${-daysLeft}d atrás`})`), item.notes && /*#__PURE__*/React.createElement("span", {
     className: "italic"
-  }, "— ", item.notes))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2014 ", item.notes))), /*#__PURE__*/React.createElement("div", {
     className: "opacity-0 group-hover:opacity-100 flex items-center flex-shrink-0"
   }, /*#__PURE__*/React.createElement(IconButton, {
     icon: "edit",
@@ -4402,7 +4398,7 @@ function ChecklistEditModal({
       ...f,
       critical: e.target.checked
     })
-  }), "Item crítico"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Notas"), /*#__PURE__*/React.createElement(TextArea, {
+  }), "Item cr\xEDtico"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Notas"), /*#__PURE__*/React.createElement(TextArea, {
     rows: 2,
     value: f.notes,
     onChange: e => setF({
@@ -4644,7 +4640,7 @@ function AddPointModal({
     className: "text-xs text-bad"
   }, error), /*#__PURE__*/React.createElement("div", {
     className: "text-[11px] text-inks"
-  }, "Usa OpenStreetMap para geocodificação. Precisa de internet.")));
+  }, "Usa OpenStreetMap para geocodifica\xE7\xE3o. Precisa de internet.")));
 }
 
 /* ==================== QUOTES TAB ==================== */
@@ -4683,15 +4679,15 @@ function QuotesTab({
     variant: "primary",
     icon: "plus",
     onClick: () => setAdding(true)
-  }, "Nova cotação")), trip.quotes.length === 0 && /*#__PURE__*/React.createElement(EmptyState, {
+  }, "Nova cota\xE7\xE3o")), trip.quotes.length === 0 && /*#__PURE__*/React.createElement(EmptyState, {
     icon: "quote",
-    title: "Nenhuma cotação ainda",
-    description: "Registre preços que encontrar (voo, hotel, carro…) e a ferramenta compara com as suas faixas de referência.",
+    title: "Nenhuma cota\xE7\xE3o ainda",
+    description: "Registre pre\xE7os que encontrar (voo, hotel, carro\u2026) e a ferramenta compara com as suas faixas de refer\xEAncia.",
     action: /*#__PURE__*/React.createElement(Button, {
       variant: "primary",
       icon: "plus",
       onClick: () => setAdding(true)
-    }, "Adicionar cotação")
+    }, "Adicionar cota\xE7\xE3o")
   }), /*#__PURE__*/React.createElement("div", {
     className: "space-y-3"
   }, (filter === 'all' ? grouped : grouped.filter(g => g.id === filter)).map(g => /*#__PURE__*/React.createElement("div", {
@@ -4765,9 +4761,9 @@ function QuoteCard({
     className: "text-lg font-semibold num"
   }, quote.price != null ? fmtMoney(quote.price, currency) : /*#__PURE__*/React.createElement("span", {
     className: "text-inks italic"
-  }, "sem preço")), priceInBase != null && currency !== trip.baseCurrency && /*#__PURE__*/React.createElement("div", {
+  }, "sem pre\xE7o")), priceInBase != null && currency !== trip.baseCurrency && /*#__PURE__*/React.createElement("div", {
     className: "text-[11px] text-inkm num"
-  }, "≈ ", fmtMoney(priceInBase, trip.baseCurrency))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2248 ", fmtMoney(priceInBase, trip.baseCurrency))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center gap-1.5"
   }, verdict && /*#__PURE__*/React.createElement("span", {
     className: cx('chip', verdict.cls)
@@ -4783,7 +4779,7 @@ function QuoteCard({
     className: "mt-3 pt-3 hairline"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] uppercase tracking-wider text-inkm mb-1"
-  }, "Referências"), /*#__PURE__*/React.createElement("div", {
+  }, "Refer\xEAncias"), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-3 gap-1 text-[11px]"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     className: "text-ok"
@@ -4869,14 +4865,14 @@ function QuoteModal({
   }, BOOKING_TYPES.map(bt => /*#__PURE__*/React.createElement("option", {
     key: bt.id,
     value: bt.id
-  }, bt.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Provedor / descrição"), /*#__PURE__*/React.createElement(TextInput, {
+  }, bt.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Provedor / descri\xE7\xE3o"), /*#__PURE__*/React.createElement(TextInput, {
     value: f.provider,
     onChange: e => setF({
       ...f,
       provider: e.target.value
     }),
     placeholder: "Ex: LATAM direto"
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Preço"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Pre\xE7o"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.price,
     onChange: e => setF({
       ...f,
@@ -4893,19 +4889,19 @@ function QuoteModal({
     value: c.code
   }, c.code)))), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2 grid grid-cols-3 gap-2 pt-2"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Bom até (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Bom at\xE9 (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.benchmarkGood,
     onChange: e => setF({
       ...f,
       benchmarkGood: e.target.value
     })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Ok até"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Ok at\xE9"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.benchmarkOk,
     onChange: e => setF({
       ...f,
       benchmarkOk: e.target.value
     })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Caro até"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Caro at\xE9"), /*#__PURE__*/React.createElement(NumberInput, {
     value: f.benchmarkBad,
     onChange: e => setF({
       ...f,
@@ -4919,7 +4915,7 @@ function QuoteModal({
       ...f,
       link: e.target.value
     }),
-    placeholder: "https://…"
+    placeholder: "https://\u2026"
   })), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
   }, /*#__PURE__*/React.createElement(Label, null, "Notas"), /*#__PURE__*/React.createElement(TextArea, {
@@ -4942,7 +4938,7 @@ function SplitTab({
     return /*#__PURE__*/React.createElement(EmptyState, {
       icon: "users",
       title: "Nenhum companheiro cadastrado",
-      description: "Adicione companheiros nas configurações da viagem para dividir despesas."
+      description: "Adicione companheiros nas configura\xE7\xF5es da viagem para dividir despesas."
     });
   }
 
@@ -4983,7 +4979,7 @@ function SplitTab({
     className: "card p-5"
   }, /*#__PURE__*/React.createElement("h3", {
     className: "text-sm font-semibold text-ink mb-3"
-  }, "Balanço"), /*#__PURE__*/React.createElement("ul", {
+  }, "Balan\xE7o"), /*#__PURE__*/React.createElement("ul", {
     className: "space-y-2 mb-4"
   }, trip.travelers.map(t => /*#__PURE__*/React.createElement("li", {
     key: t.id,
@@ -5003,7 +4999,7 @@ function SplitTab({
     className: "text-xs uppercase tracking-widest text-inkm mb-2"
   }, "Como acertar"), settlements.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-inkm"
-  }, "Nada a acertar 👍") : /*#__PURE__*/React.createElement("ul", {
+  }, "Nada a acertar \uD83D\uDC4D") : /*#__PURE__*/React.createElement("ul", {
     className: "space-y-1.5"
   }, settlements.map((s, i) => {
     const from = trip.travelers.find(t => t.id === s.from);
@@ -5028,7 +5024,7 @@ function SplitTab({
     className: "text-sm font-semibold text-ink mb-3"
   }, "Despesas divididas (", rows.length, ")"), rows.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-inkm"
-  }, "Marque \"quem pagou\" nos blocos do roteiro para começar a dividir.") : /*#__PURE__*/React.createElement("ul", {
+  }, "Marque \"quem pagou\" nos blocos do roteiro para come\xE7ar a dividir.") : /*#__PURE__*/React.createElement("ul", {
     className: "space-y-2 max-h-[500px] overflow-y-auto"
   }, rows.slice().reverse().map((r, i) => {
     const p = trip.travelers.find(t => t.id === r.payer);
@@ -5046,7 +5042,7 @@ function SplitTab({
       className: "num"
     }, fmtMoney(r.amount, trip.baseCurrency))), /*#__PURE__*/React.createElement("div", {
       className: "text-inkm"
-    }, fmtDate(r.dayDate), " · pagou ", p?.name, " · ", r.splitBetween.length, "p · ", /*#__PURE__*/React.createElement("span", {
+    }, fmtDate(r.dayDate), " \xB7 pagou ", p?.name, " \xB7 ", r.splitBetween.length, "p \xB7 ", /*#__PURE__*/React.createElement("span", {
       className: "num"
     }, fmtMoney(r.share, trip.baseCurrency), " cada")));
   }))));
@@ -5096,7 +5092,7 @@ function NotesTab({
     className: "flex items-center justify-between mb-2"
   }, /*#__PURE__*/React.createElement("h3", {
     className: "text-sm font-semibold text-ink"
-  }, "Anotações da viagem"), v !== trip.notes && /*#__PURE__*/React.createElement(Button, {
+  }, "Anota\xE7\xF5es da viagem"), v !== trip.notes && /*#__PURE__*/React.createElement(Button, {
     size: "sm",
     variant: "primary",
     onClick: save
@@ -5104,10 +5100,10 @@ function NotesTab({
     value: v,
     onChange: e => setV(e.target.value),
     rows: 20,
-    placeholder: "Coisas importantes, aprendizados, links, ideias soltas…"
+    placeholder: "Coisas importantes, aprendizados, links, ideias soltas\u2026"
   }), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-inks mt-2"
-  }, v.length, " caracteres · autosalva ao clicar em Salvar"));
+  }, v.length, " caracteres \xB7 autosalva ao clicar em Salvar"));
 }
 
 /* ==================== CONVERTER MODAL ==================== */
@@ -5128,7 +5124,7 @@ function ConverterModal({
   return /*#__PURE__*/React.createElement(Modal, {
     open: open,
     onClose: onClose,
-    title: "Câmbio",
+    title: "C\xE2mbio",
     size: "sm",
     footer: /*#__PURE__*/React.createElement(Button, {
       onClick: onClose

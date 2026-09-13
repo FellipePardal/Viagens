@@ -51,9 +51,27 @@ Viagens/
 - Geocoding: [Nominatim/OpenStreetMap](https://nominatim.openstreetmap.org)
 - Mapas: Leaflet + tiles CartoDB Voyager
 
+## Deploy (Vercel)
+
+O repositório está pronto pra deploy em [Vercel](https://vercel.com):
+
+1. Em [vercel.com/new](https://vercel.com/new), importe este repo do GitHub
+2. Framework preset: **Other**
+3. Build & Output settings já vêm do `vercel.json`:
+   - Build command: `npm run build`
+   - Output directory: `.`
+4. Nenhuma env var necessária (Supabase config está inline no HTML)
+5. Deploy — em ~30s fica online
+
+Depois do primeiro deploy, adicione a URL do Vercel nas [Redirect URLs do Supabase](https://supabase.com/dashboard/project/_/auth/url-configuration):
+
+- **Site URL:** `https://SEU-PROJETO.vercel.app`
+- **Redirect URLs:** `https://SEU-PROJETO.vercel.app/**`
+
 ## Próximos passos
 
-- [ ] Migrar de localStorage para Supabase (Postgres + Auth + Realtime)
-- [ ] Deploy no Vercel
-- [ ] Convite de colaboradores por email
-- [ ] Notificações de mudanças
+- [x] Migrar de localStorage para Supabase (Postgres + Auth + Realtime)
+- [x] Convite de colaboradores por email
+- [ ] Deploy no Vercel (em andamento)
+- [ ] Google OAuth (opcional — magic link cobre 100% hoje)
+- [ ] Merge inteligente de edits concorrentes

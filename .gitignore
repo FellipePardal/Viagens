@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Ambiente / segredos
+.env
+.env.local
+.env.*.local
+*.env
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build / temp
+*.log
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# Backup
+*.bak
+*.tmp

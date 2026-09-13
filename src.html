@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0A0A0A">
+<title>Travel Planner — Planejamento de viagens</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          paper:    '#FFFFFF',
+          paperx:   '#FFFFFF',
+          paperd:   '#F7F7F7',
+          ink:      '#222222',
+          ink2:     '#484848',
+          inkm:     '#717171',
+          inks:     '#B0B0B0',
+          rule:     '#EBEBEB',
+          rules:    '#DDDDDD',
+          accent:   '#FF385C',
+          accentd:  '#E31C5F',
+          accents:  '#FFF0F3',
+          ok:       '#008A05',
+          okbg:     '#E6F5E7',
+          warn:     '#B47B0E',
+          warnbg:   '#FDF5E4',
+          bad:      '#C13515',
+          badbg:    '#FCE7E1',
+          stamp:    '#FF385C',
+        },
+        fontFamily: {
+          display: ['"Plus Jakarta Sans"','ui-sans-serif','system-ui','sans-serif'],
+          sans:    ['"Plus Jakarta Sans"','ui-sans-serif','system-ui','sans-serif'],
+          mono:    ['"IBM Plex Mono"','ui-monospace','SFMono-Regular','Menlo','monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root {
+    --paper: #FFFFFF;
+    --paper-2: #F7F7F7;
+    --paper-3: #FFFFFF;
+    --ink: #222222;
+    --ink-2: #484848;
+    --ink-3: #717171;
+    --ink-4: #B0B0B0;
+    --rule: #EBEBEB;
+    --rule-2: #DDDDDD;
+    --accent: #FF385C;
+    --accent-d: #E31C5F;
+    --accent-s: #FFF0F3;
+    --ok: #008A05;
+    --warn: #B47B0E;
+    --bad: #C13515;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-xl: 0 16px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  html, body { background: var(--paper); color: var(--ink); }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'ss01','cv11';
+  }
+  .font-bold { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.02em; font-weight: 700; }
+  .font-display-tight { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.03em; font-weight: 800; }
+  .font-mono  { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+  input, textarea, select, button { font-family: inherit; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -0.005em; }
+  .uppercase-track { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; font-size: 11px; }
+
+  /* ==================== FIELD ==================== */
+  .field {
+    width: 100%; background: #FFFFFF; border: 1px solid var(--rule-2);
+    padding: 12px 14px; border-radius: 10px; font-size: 14px; color: var(--ink);
+    transition: border-color .15s ease, box-shadow .15s ease, background .12s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 500;
+  }
+  .field:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 2px rgba(34,34,34,0.06); }
+  .field::placeholder { color: var(--ink-4); font-weight: 400; }
+
+  /* ==================== BUTTONS ==================== */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 11px 18px; font-size: 14px; font-weight: 600;
+    border-radius: 10px; border: 1px solid transparent; cursor: pointer;
+    transition: transform .12s ease, box-shadow .15s ease, background .15s ease, color .15s ease, border-color .15s ease;
+    white-space: nowrap; user-select: none;
+    position: relative;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--ink); color: white;
+  }
+  .btn-primary:hover:not(:disabled) { background: #000; box-shadow: var(--shadow-md); }
+  .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+  .btn-accent {
+    background: var(--accent); color: white;
+  }
+  .btn-accent:hover:not(:disabled) { background: var(--accent-d); box-shadow: 0 4px 12px rgba(255,56,92,0.25); }
+  .btn-accent:active:not(:disabled) { transform: scale(0.98); }
+  .btn-ghost {
+    background: transparent; color: var(--ink); border-color: var(--rule-2);
+  }
+  .btn-ghost:hover:not(:disabled) { background: var(--paper-2); border-color: var(--ink-3); }
+  .btn-danger {
+    background: transparent; color: var(--bad); border-color: rgba(193,53,21,0.3);
+  }
+  .btn-danger:hover:not(:disabled) { background: var(--badbg); border-color: var(--bad); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+  .btn-xs { padding: 6px 11px; font-size: 12px; border-radius: 8px; }
+
+  /* ==================== CHIPS ==================== */
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--rule); background: white; color: var(--ink-2);
+    border-radius: 999px;
+  }
+  .chip-ink   { color: var(--ink); border-color: var(--rule-2); background: white; }
+  .chip-ok    { color: var(--ok); border-color: transparent; background: var(--okbg); }
+  .chip-warn  { color: var(--warn); border-color: transparent; background: var(--warnbg); }
+  .chip-bad   { color: var(--bad); border-color: transparent; background: var(--badbg); }
+  .chip-accent{ color: var(--accent-d); border-color: transparent; background: var(--accents); }
+  .chip-solid { color: white; background: var(--ink); border-color: var(--ink); }
+
+  /* ==================== CARDS ==================== */
+  .card {
+    background: white; border: 1px solid var(--rule);
+    border-radius: 16px; position: relative;
+    transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+  }
+  .card-elevated { box-shadow: var(--shadow-md); border-color: transparent; }
+  .card-hover:hover { box-shadow: var(--shadow-lg); border-color: transparent; transform: translateY(-2px); }
+  .card-flat { background: var(--paper-2); border: 1px solid transparent; border-radius: 12px; }
+
+  .hairline { border-bottom: 1px solid var(--rule); }
+  .hairline-solid { border-bottom: 1px solid var(--rule); }
+
+  /* ==================== NAV ==================== */
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 10px; cursor: pointer;
+    color: var(--ink-3); font-size: 14px; font-weight: 500;
+    transition: all .15s ease; position: relative;
+  }
+  .nav-item:hover { color: var(--ink); background: var(--paper-2); }
+  .nav-item.active { color: var(--ink); background: var(--paper-2); font-weight: 600; }
+  .nav-item.active svg { color: var(--accent); }
+  .nav-item .badge {
+    margin-left: auto; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px;
+    background: var(--accent); color: white;
+    padding: 1px 8px; border-radius: 999px; font-weight: 700;
+  }
+
+  /* Bottom nav mobile */
+  .bnav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px 8px; color: var(--ink-3); cursor: pointer;
+    font-size: 10px; font-weight: 600;
+    transition: color .15s;
+    background: transparent; border: none;
+    position: relative;
+  }
+  .bnav-item.active { color: var(--accent); }
+  .bnav-item.active svg { stroke-width: 2.2; }
+
+  /* ==================== SCROLL ==================== */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 8px; border: 2px solid var(--paper); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--rule-2); }
+
+  /* ==================== LEAFLET ==================== */
+  .leaflet-container {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--paper-2);
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px; background: white;
+    border: none; box-shadow: var(--shadow-lg);
+  }
+  .leaflet-popup-tip { background: white; border: none; box-shadow: var(--shadow-md); }
+
+  .tp-marker {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; background: var(--accent); color: white;
+    font-size: 12px; font-weight: 700; border-radius: 999px;
+    border: 3px solid white; box-shadow: 0 4px 12px rgba(255,56,92,0.35);
+  }
+
+  /* ==================== ANIMATIONS ==================== */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .fade-in { animation: fadeIn .28s cubic-bezier(.2,.7,.3,1) both; }
+  .fade-in-1 { animation: fadeIn .28s cubic-bezier(.2,.7,.3,1) both; animation-delay: .04s; }
+  .fade-in-2 { animation: fadeIn .28s cubic-bezier(.2,.7,.3,1) both; animation-delay: .08s; }
+  .fade-in-3 { animation: fadeIn .28s cubic-bezier(.2,.7,.3,1) both; animation-delay: .14s; }
+  .fade-in-4 { animation: fadeIn .28s cubic-bezier(.2,.7,.3,1) both; animation-delay: .20s; }
+  .fade-in-5 { animation: fadeIn .28s cubic-bezier(.2,.7,.3,1) both; animation-delay: .28s; }
+
+  @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  .overlay-in { animation: overlayIn .18s ease-out both; }
+
+  @keyframes stampIn { 0% { opacity: 0; transform: scale(1.8) rotate(-4deg); } 60% { opacity: 0.9; transform: scale(0.94) rotate(-4deg); } 100% { opacity: 0.88; transform: scale(1) rotate(-4deg); } }
+  .stamp-in { animation: stampIn .5s cubic-bezier(.4,1.6,.4,1) both; }
+
+  @keyframes slideRight { from { transform: translateX(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .slide-right { animation: slideRight .3s ease-out both; }
+
+  /* ==================== PRINT ==================== */
+  @media print {
+    body { background: white; }
+    body::before { display: none; }
+    .no-print { display: none !important; }
+    .card, .card-double, .card-ticket { border: 1px solid #999; box-shadow: none; }
+    main { padding: 0 !important; }
+    .print-block { page-break-inside: avoid; }
+  }
+
+  /* ==================== SAFE AREA ==================== */
+  @supports (padding: max(0px)) {
+    .safe-b { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+    .safe-t { padding-top: max(env(safe-area-inset-top), 0px); }
+  }
+
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+
+  /* Fancy underline for links */
+  .link-under { background-image: linear-gradient(to right, currentColor 100%, currentColor 0); background-size: 100% 1px; background-repeat: no-repeat; background-position: 0 100%; }
+
+  /* Ticker style number display */
+  .ticker {
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-flex; gap: 2px;
+  }
+  .ticker span {
+    display: inline-block; min-width: 0.7em; padding: 2px 3px;
+    background: var(--ink); color: var(--paper);
+    border-radius: 2px; text-align: center;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="errbox" style="display:none;position:fixed;inset:0;background:#FEF2F2;color:#991B1B;padding:24px;font-family:monospace;font-size:12px;overflow:auto;z-index:99999;white-space:pre-wrap"></div>
+
+<script>
+  window.addEventListener('error', function(e) {
+    var b = document.getElementById('errbox');
+    b.style.display = 'block';
+    b.textContent = 'JS ERROR:\n' + (e.error && e.error.stack ? e.error.stack : e.message) + '\nat ' + e.filename + ':' + e.lineno + ':' + e.colno;
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    var b = document.getElementById('errbox');
+    b.style.display = 'block';
+    b.textContent = 'PROMISE REJECTION:\n' + (e.reason && e.reason.stack ? e.reason.stack : e.reason);
+  });
+</script>
+
+<script type="text/babel" data-presets="react">
+/* ============================================================
+   TRAVEL PLANNER
+   Ferramenta escalável para planejamento de viagens.
+   ============================================================ */
+
+const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } = React;
+
+/* ==================== CONSTANTES ==================== */
+
+const STORAGE_KEY = 'travel-planner-v1';
+const FX_CACHE_KEY = 'travel-planner-fx-cache-v1';
+const WX_CACHE_KEY = 'travel-planner-wx-cache-v1';
+const FX_TTL_MS = 4 * 60 * 60 * 1000; // 4h
+
+const CURRENCIES = [
+  { code: 'BRL', name: 'Real brasileiro',   symbol: 'R$'  },
+  { code: 'USD', name: 'Dólar americano',   symbol: 'US$' },
+  { code: 'EUR', name: 'Euro',              symbol: '€'   },
+  { code: 'GBP', name: 'Libra esterlina',   symbol: '£'   },
+  { code: 'ARS', name: 'Peso argentino',    symbol: 'AR$' },
+  { code: 'UYU', name: 'Peso uruguaio',     symbol: 'UY$' },
+  { code: 'CLP', name: 'Peso chileno',      symbol: 'CL$' },
+  { code: 'MXN', name: 'Peso mexicano',     symbol: 'MX$' },
+  { code: 'JPY', name: 'Iene',              symbol: '¥'   },
+  { code: 'CAD', name: 'Dólar canadense',   symbol: 'C$'  },
+  { code: 'AUD', name: 'Dólar australiano', symbol: 'A$'  },
+  { code: 'CHF', name: 'Franco suíço',      symbol: 'CHF' },
+];
+
+const CATEGORY_COLORS = ['#0A0A0A','#525252','#78716C','#B45309','#166534','#1E40AF','#7C2D12','#991B1B','#0F766E','#5B21B6'];
+
+const CHECKLIST_PHASES = [
+  { id: 'before-book',   name: 'Antes de reservar' },
+  { id: 'before-travel', name: 'Antes de viajar' },
+  { id: 'on-arrival',    name: 'Na chegada' },
+  { id: 'during',        name: 'Durante a viagem' },
+  { id: 'after',         name: 'Depois' },
+];
+
+const BOOKING_TYPES = [
+  { id: 'flight',   name: 'Voo' },
+  { id: 'hotel',    name: 'Hospedagem' },
+  { id: 'car',      name: 'Carro' },
+  { id: 'activity', name: 'Passeio' },
+  { id: 'transfer', name: 'Transfer' },
+  { id: 'other',    name: 'Outro' },
+];
+
+/* ==================== UTILS ==================== */
+
+const uid = (prefix = '') => prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join(' ');
+
+const clone = (obj) => JSON.parse(JSON.stringify(obj));
+
+function isoToday() { return new Date().toISOString().slice(0, 10); }
+function isoAddDays(iso, n) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetween(a, b) {
+  const da = new Date(a + 'T00:00:00'), db = new Date(b + 'T00:00:00');
+  return Math.round((db - da) / (1000 * 60 * 60 * 24));
+}
+function fmtDate(iso, opts = {}) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: opts.year ? 'numeric' : undefined });
+  } catch { return iso; }
+}
+function fmtDateLong(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    const s = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  } catch { return iso; }
+}
+function fmtDow(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  } catch { return ''; }
+}
+
+function currencySymbol(code) {
+  const c = CURRENCIES.find(x => x.code === code);
+  return c ? c.symbol : code;
+}
+
+function fmtMoney(amount, code = 'BRL', opts = {}) {
+  if (amount == null || isNaN(amount)) return '—';
+  const sym = currencySymbol(code);
+  const digits = opts.digits ?? 2;
+  const abs = Math.abs(amount);
+  const s = abs.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${amount < 0 ? '-' : ''}${sym} ${s}`;
+}
+
+function fmtMoneyCompact(amount, code = 'BRL') {
+  if (amount == null || isNaN(amount)) return '—';
+  const sym = currencySymbol(code);
+  const abs = Math.abs(amount);
+  let n, suf = '';
+  if (abs >= 1e6) { n = amount / 1e6; suf = 'M'; }
+  else if (abs >= 1e3) { n = amount / 1e3; suf = 'k'; }
+  else { n = amount; }
+  const s = suf ? n.toFixed(n >= 100 || suf ? 1 : 2).replace(/\.0$/,'') : Math.round(n).toLocaleString('pt-BR');
+  return `${sym} ${s}${suf}`;
+}
+
+/* ==================== STORAGE ==================== */
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.version) return null;
+    return parsed;
+  } catch (e) {
+    console.error('Store load failed', e);
+    return null;
+  }
+}
+function saveStore(store) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  } catch (e) { console.error('Save failed', e); }
+}
+
+/* ==================== SHARE ==================== */
+
+function encodeTripToShareable(trip) {
+  try {
+    const json = JSON.stringify(trip);
+    const bytes = new TextEncoder().encode(json);
+    let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  } catch { return null; }
+}
+function decodeShareableToTrip(str) {
+  try {
+    let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch { return null; }
+}
+function makeShareableUrl(trip) {
+  const enc = encodeTripToShareable(trip);
+  if (!enc) return null;
+  return `${location.origin}${location.pathname}#trip=${enc}`;
+}
+
+/* ==================== FX (câmbio) ==================== */
+
+async function fetchRates(base = 'BRL') {
+  try {
+    const cache = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || 'null');
+    if (cache && cache.base === base && Date.now() - cache.ts < FX_TTL_MS) return cache;
+    const r = await fetch(`https://open.er-api.com/v6/latest/${base}`);
+    if (!r.ok) throw new Error('fx error');
+    const data = await r.json();
+    if (data.result !== 'success') throw new Error('fx not success');
+    const out = { base, rates: data.rates, ts: Date.now(), source: 'open.er-api.com' };
+    localStorage.setItem(FX_CACHE_KEY, JSON.stringify(out));
+    return out;
+  } catch (e) {
+    // fallback cache antigo
+    try {
+      const cache = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || 'null');
+      if (cache) return { ...cache, stale: true };
+    } catch {}
+    return null;
+  }
+}
+
+function convert(amount, from, to, rates) {
+  if (from === to) return amount;
+  if (!rates || !rates.rates) return null;
+  // rates baseadas em rates.base
+  const b = rates.base;
+  const r = rates.rates;
+  if (from === b) {
+    if (r[to]) return amount * r[to];
+    return null;
+  }
+  if (to === b) {
+    if (r[from]) return amount / r[from];
+    return null;
+  }
+  if (r[from] && r[to]) return amount * (r[to] / r[from]);
+  return null;
+}
+
+/* ==================== CLIMA ==================== */
+
+async function fetchWeather(lat, lon, startDate, endDate) {
+  try {
+    const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)},${startDate},${endDate}`;
+    const cache = JSON.parse(localStorage.getItem(WX_CACHE_KEY) || 'null');
+    if (cache && cache.key === cacheKey && Date.now() - cache.ts < FX_TTL_MS) return cache.data;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&start_date=${startDate}&end_date=${endDate}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('wx error');
+    const data = await r.json();
+    localStorage.setItem(WX_CACHE_KEY, JSON.stringify({ key: cacheKey, ts: Date.now(), data }));
+    return data;
+  } catch { return null; }
+}
+
+async function geocode(query) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+    if (!r.ok) return null;
+    const arr = await r.json();
+    if (!arr.length) return null;
+    return { lat: parseFloat(arr[0].lat), lon: parseFloat(arr[0].lon), display: arr[0].display_name };
+  } catch { return null; }
+}
+
+/* ==================== TEMPLATES ==================== */
+
+function makeCategory(name, budget, color) {
+  return { id: uid('c_'), name, budgeted: budget || 0, color: color || '#0A0A0A' };
+}
+
+function makeDay(date, title = '', blocks = [], notes = '') {
+  return { id: uid('d_'), date, title, notes, blocks: blocks.map(b => makeBlock(b)) };
+}
+
+function makeBlock(b = {}) {
+  return {
+    id: uid('b_'),
+    title: b.title || '',
+    time: b.time || '',
+    location: b.location || '',
+    cost: b.cost != null ? Number(b.cost) : null,
+    currency: b.currency || null,
+    categoryId: b.categoryId || null,
+    notes: b.notes || '',
+    link: b.link || '',
+    paidBy: b.paidBy || null,
+    splitBetween: b.splitBetween || null,
+    done: !!b.done,
+  };
+}
+
+function makeChecklistItem(text, phase, opts = {}) {
+  return {
+    id: uid('ck_'),
+    text, phase,
+    done: false,
+    deadline: opts.deadline || null,
+    critical: !!opts.critical,
+    notes: opts.notes || '',
+  };
+}
+
+function makeQuote(type, opts = {}) {
+  return {
+    id: uid('q_'),
+    type, provider: opts.provider || '', price: opts.price ?? null, currency: opts.currency || null,
+    benchmarkGood: opts.benchmarkGood ?? null, benchmarkOk: opts.benchmarkOk ?? null, benchmarkBad: opts.benchmarkBad ?? null,
+    notes: opts.notes || '', link: opts.link || '', status: opts.status || 'searching',
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function emptyTrip({ name, destination, startDate, endDate, baseCurrency = 'BRL', secondaryCurrencies = [], categories = [], travelers = [], budgetCeiling = 0, mapPoints = [] } = {}) {
+  const sd = startDate || isoToday();
+  const ed = endDate || isoAddDays(sd, 7);
+  const nDays = Math.max(1, daysBetween(sd, ed) + 1);
+  return {
+    id: uid('trip_'),
+    name: name || 'Nova viagem',
+    destination: destination || '',
+    startDate: sd,
+    endDate: ed,
+    status: 'planning',
+    archived: false,
+    baseCurrency,
+    secondaryCurrencies,
+    budgetCeiling: Number(budgetCeiling) || 0,
+    categories: categories.length ? categories : [
+      makeCategory('Voo',           0, '#0A0A0A'),
+      makeCategory('Hospedagem',    0, '#525252'),
+      makeCategory('Transporte',    0, '#78716C'),
+      makeCategory('Alimentação',   0, '#B45309'),
+      makeCategory('Passeios',      0, '#166534'),
+      makeCategory('Extras',        0, '#7C2D12'),
+    ],
+    travelers,
+    days: Array.from({ length: nDays }, (_, i) => makeDay(isoAddDays(sd, i))),
+    checklist: [],
+    quotes: [],
+    mapPoints,
+    notes: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// Seed do Uruguai
+function seedUruguai() {
+  const cats = [
+    makeCategory('Voo',          2200, '#0A0A0A'),
+    makeCategory('Hospedagem',   4120, '#525252'),
+    makeCategory('Carro',        2100, '#78716C'),
+    makeCategory('Combustível',   550, '#7C2D12'),
+    makeCategory('Alimentação',  2200, '#B45309'),
+    makeCategory('Passeios',      450, '#166534'),
+    makeCategory('Extras',        500, '#1E40AF'),
+  ];
+  const catByName = (n) => cats.find(c => c.name === n)?.id || null;
+
+  const start = '2027-01-26';
+  const days = [
+    makeDay(start, 'Chegada em Montevidéu', [
+      { time: '08:00', title: 'Voo GRU → MVD', location: 'Aeroporto de Guarulhos', categoryId: catByName('Voo'), cost: 2200, currency: 'BRL', notes: 'Direto LATAM (~2h40)' },
+      { time: '12:30', title: 'Retirada do carro', location: 'Aeroporto de Carrasco', categoryId: catByName('Carro'), notes: 'Conferir tag de pedágio, seguro, franquia' },
+      { time: '14:00', title: 'Check-in hotel Pocitos', location: 'Pocitos, Montevidéu', categoryId: catByName('Hospedagem'), cost: 450, currency: 'BRL' },
+      { time: '18:00', title: 'Caminhada pela Rambla', location: 'Rambla Pocitos' },
+      { time: '20:30', title: 'Jantar em Pocitos', notes: 'Menu executivo local', categoryId: catByName('Alimentação'), cost: 200, currency: 'BRL' },
+    ]),
+    makeDay(isoAddDays(start,1), 'Montevidéu histórica', [
+      { time: '09:00', title: 'Plaza Independencia e Puerta de la Ciudadela' },
+      { time: '10:30', title: 'Peatonal Sarandí + Café Brasilero', location: 'Ciudad Vieja', categoryId: catByName('Alimentação'), cost: 40, currency: 'BRL' },
+      { time: '12:30', title: 'Almoço no Mercado del Puerto', notes: 'Parrilla clássica', categoryId: catByName('Alimentação'), cost: 200, currency: 'BRL' },
+      { time: '15:00', title: 'Museu do Cordón ou Museo Torres García' },
+      { time: '20:30', title: 'Jantar no Cordón' },
+      { time: '22:30', title: 'Tango no Baar Fun Fun', notes: 'Opcional' },
+    ]),
+    makeDay(isoAddDays(start,2), 'Estrada até Colônia do Sacramento', [
+      { time: '09:30', title: 'MVD → Colônia (180 km)', location: 'Ruta 1', categoryId: catByName('Combustível'), cost: 120, currency: 'BRL' },
+      { time: '12:00', title: 'Check-in Colônia (bairro histórico)', categoryId: catByName('Hospedagem'), cost: 420, currency: 'BRL' },
+      { time: '14:00', title: 'Caminhada pelo bairro histórico e farol' },
+      { time: '19:30', title: 'Pôr do sol na Rambla Costanera' },
+      { time: '21:00', title: 'Jantar no El Buen Suspiro', notes: 'Vinhos e queijos', categoryId: catByName('Alimentação'), cost: 250, currency: 'BRL' },
+    ]),
+    makeDay(isoAddDays(start,3), 'Road trip Colônia → Punta del Este', [
+      { time: '09:00', title: 'Saída Colônia', location: 'Ruta 1 → Ruta Interbalnearia', categoryId: catByName('Combustível'), cost: 200, currency: 'BRL', notes: 'Percurso ~320 km' },
+      { time: '17:30', title: 'Casapueblo em Punta Ballena', location: 'Ruta 10', categoryId: catByName('Passeios'), cost: 100, currency: 'BRL', notes: 'Chegar 40 min antes da Cerimônia do Sol (~20h)' },
+      { time: '21:30', title: 'Check-in em Punta del Este', location: 'Península ou Playa Mansa', categoryId: catByName('Hospedagem'), cost: 750, currency: 'BRL' },
+    ]),
+    makeDay(isoAddDays(start,4), 'Punta clássico', [
+      { time: '10:00', title: 'Playa Brava + La Mano (Los Dedos)' },
+      { time: '13:00', title: 'Almoço leve na praia', categoryId: catByName('Alimentação'), cost: 150, currency: 'BRL' },
+      { time: '15:00', title: 'Playa Mansa' },
+      { time: '17:30', title: 'Porto com lobos-marinhos' },
+      { time: '21:00', title: 'Jantar reservado na península', notes: 'Parrilla La Cava (reservar)', categoryId: catByName('Alimentação'), cost: 300, currency: 'BRL' },
+      { time: '00:00', title: 'Pernoite Punta', categoryId: catByName('Hospedagem'), cost: 750, currency: 'BRL' },
+    ]),
+    makeDay(isoAddDays(start,5), 'José Ignacio + La Barra', [
+      { time: '10:00', title: 'Drive até José Ignacio (Ruta 10)', location: 'José Ignacio', categoryId: catByName('Combustível'), cost: 80, currency: 'BRL' },
+      { time: '13:00', title: 'Almoço em José Ignacio', categoryId: catByName('Alimentação'), cost: 250, currency: 'BRL' },
+      { time: '16:30', title: 'Volta por Manantiales e La Barra' },
+      { time: '22:00', title: 'Noite nos bares de La Barra' },
+      { time: '00:00', title: 'Pernoite Punta', categoryId: catByName('Hospedagem'), cost: 750, currency: 'BRL' },
+    ]),
+    makeDay(isoAddDays(start,6), 'Ilha Gorriti (ou dia livre)', [
+      { time: '10:00', title: 'Barco para Isla Gorriti', location: 'Porto de Punta', categoryId: catByName('Passeios'), cost: 180, currency: 'BRL', notes: 'Combo com Isla de Lobos vale a pena' },
+      { time: '19:00', title: 'Última janta em Punta', categoryId: catByName('Alimentação'), cost: 250, currency: 'BRL' },
+      { time: '00:00', title: 'Pernoite Punta', categoryId: catByName('Hospedagem'), cost: 750, currency: 'BRL' },
+    ]),
+    makeDay(isoAddDays(start,7), 'Volta pra casa', [
+      { time: '10:00', title: 'Punta → Carrasco (1h40)', categoryId: catByName('Combustível'), cost: 100, currency: 'BRL' },
+      { time: '12:30', title: 'Devolução do carro' },
+      { time: '15:30', title: 'Voo MVD → GRU' },
+    ]),
+  ];
+
+  const checklist = [
+    makeChecklistItem('Conferir data de emissão do RG (menos de 10 anos?)', 'before-book', { critical: true, notes: 'Uruguai só aceita RG físico emitido há < 10 anos' }),
+    makeChecklistItem('Cotar voo direto LATAM 26/01–02/02', 'before-book', { deadline: '2026-10-15' }),
+    makeChecklistItem('Cotar 2–3 hotéis/aparts em Punta (29/01–02/02)', 'before-book', { deadline: '2026-10-31' }),
+    makeChecklistItem('Cotar carro 8 diárias no Carrasco', 'before-book', { deadline: '2026-10-31', notes: 'Perguntar taxa de condutor jovem' }),
+    makeChecklistItem('Cotar hotéis MVD (2n) e Colônia (1n)', 'before-book', { deadline: '2026-11-30' }),
+    makeChecklistItem('Abrir conta global em dólar e cartão internacional', 'before-travel', { critical: true }),
+    makeChecklistItem('Contratar seguro viagem', 'before-travel'),
+    makeChecklistItem('Reservar mesa de sábado 30/01 em Punta', 'before-travel', { deadline: '2027-01-28' }),
+    makeChecklistItem('Baixar mapas offline (MVD, Colônia, Punta)', 'before-travel'),
+    makeChecklistItem('RG físico + CNH física na carteira', 'before-travel', { critical: true }),
+    makeChecklistItem('Confirmar com locadora: tag, seguro, franquia', 'on-arrival', { critical: true }),
+    makeChecklistItem('Trocar pesos em casa de câmbio (fora do aeroporto)', 'on-arrival'),
+    makeChecklistItem('Farol baixo sempre aceso, álcool zero', 'on-arrival', { critical: true }),
+  ];
+
+  const quotes = [
+    { type: 'flight',   provider: 'LATAM (direto GRU-MVD)',    price: null, currency: 'BRL', benchmarkGood: 1800, benchmarkOk: 2200, benchmarkBad: 2600, notes: 'Média histórica R$ 2.089. Alta temporada 1.900-2.200+' },
+    { type: 'car',      provider: 'Locadora Carrasco (8 diárias)', price: null, currency: 'BRL', benchmarkGood: 1600, benchmarkOk: 2100, benchmarkBad: 2800, notes: 'Alta temporada dobra o preço; antecedência salva 30–50%' },
+    { type: 'hotel',    provider: 'Punta 4 noites (29/01–02/02)', price: null, currency: 'BRL', benchmarkGood: 2200, benchmarkOk: 2800, benchmarkBad: 3800, notes: '~R$ 550/n mínimo; apart com cozinha economiza R$ 600–900' },
+    { type: 'hotel',    provider: 'Montevidéu 2 noites (Pocitos)', price: null, currency: 'BRL', benchmarkGood: 700,  benchmarkOk: 900,  benchmarkBad: 1200, notes: 'Conferir estacionamento' },
+    { type: 'hotel',    provider: 'Colônia 1 noite (bairro histórico)', price: null, currency: 'BRL', benchmarkGood: 300, benchmarkOk: 420, benchmarkBad: 550 },
+  ].map(q => makeQuote(q.type, q));
+
+  const mapPoints = [
+    { id: uid('m_'), name: 'Montevidéu', lat: -34.9011, lon: -56.1645, kind: 'city', note: 'Base 2 noites' },
+    { id: uid('m_'), name: 'Colônia do Sacramento', lat: -34.4626, lon: -57.8400, kind: 'city', note: 'Pernoite 1 noite' },
+    { id: uid('m_'), name: 'Casapueblo (Punta Ballena)', lat: -34.9126, lon: -55.0405, kind: 'sight', note: 'Cerimônia do Sol' },
+    { id: uid('m_'), name: 'Punta del Este', lat: -34.9633, lon: -54.9439, kind: 'city', note: 'Base 4 noites' },
+    { id: uid('m_'), name: 'José Ignacio', lat: -34.8410, lon: -54.6367, kind: 'sight', note: 'Bate-volta' },
+  ];
+
+  const trip = emptyTrip({
+    name: 'Uruguai · verão 2027',
+    destination: 'Uruguai (Montevidéu, Colônia, Punta del Este)',
+    startDate: start,
+    endDate: isoAddDays(start, 7),
+    baseCurrency: 'BRL',
+    secondaryCurrencies: ['USD', 'UYU'],
+    budgetCeiling: 10000,
+    categories: cats,
+    travelers: [{ id: uid('t_'), name: 'Você', color: '#0A0A0A' }],
+    mapPoints,
+  });
+  trip.days = days;
+  trip.checklist = checklist;
+  trip.quotes = quotes;
+  trip.notes = 'IVA de 22% devolvido em cartão internacional (restaurantes, bares, aluguel de carro). Estratégia: 70–80% cartão, 10–20% pesos trocados fora do aeroporto.';
+  return trip;
+}
+
+/* Templates para "nova viagem" */
+const TEMPLATES = [
+  {
+    id: 'blank',
+    name: 'Em branco',
+    description: 'Começar do zero, sem sugestões.',
+    build: (opts) => emptyTrip(opts),
+  },
+  {
+    id: 'beach',
+    name: 'Praia',
+    description: '7–10 dias no litoral: sol, mar, jantares.',
+    build: (opts) => {
+      const t = emptyTrip({
+        ...opts,
+        categories: [
+          makeCategory('Voo', 0, '#0A0A0A'),
+          makeCategory('Hospedagem', 0, '#525252'),
+          makeCategory('Transporte', 0, '#78716C'),
+          makeCategory('Alimentação', 0, '#B45309'),
+          makeCategory('Beach clubs / passeios', 0, '#166534'),
+          makeCategory('Extras', 0, '#7C2D12'),
+        ],
+      });
+      t.checklist = [
+        makeChecklistItem('Reservar hotel/apart de frente para o mar', 'before-book'),
+        makeChecklistItem('Cotar transfer ou aluguel de carro', 'before-book'),
+        makeChecklistItem('Comprar/renovar protetor solar', 'before-travel'),
+        makeChecklistItem('Trajes de banho, chinelo, chapéu', 'before-travel'),
+        makeChecklistItem('Cabo/carregador portátil', 'before-travel'),
+        makeChecklistItem('Bermuda seca de reserva na bolsa', 'during'),
+      ];
+      return t;
+    },
+  },
+  {
+    id: 'city',
+    name: 'Cidade grande',
+    description: 'Metrópole: museus, restaurantes, transporte público.',
+    build: (opts) => {
+      const t = emptyTrip({
+        ...opts,
+        categories: [
+          makeCategory('Voo', 0, '#0A0A0A'),
+          makeCategory('Hospedagem', 0, '#525252'),
+          makeCategory('Transporte urbano', 0, '#78716C'),
+          makeCategory('Alimentação', 0, '#B45309'),
+          makeCategory('Museus / shows', 0, '#166534'),
+          makeCategory('Compras', 0, '#7C2D12'),
+          makeCategory('Extras', 0, '#1E40AF'),
+        ],
+      });
+      t.checklist = [
+        makeChecklistItem('Comprar passe de transporte antecipado', 'before-book'),
+        makeChecklistItem('Reservar museus principais', 'before-travel'),
+        makeChecklistItem('Reservar restaurantes disputados', 'before-travel'),
+        makeChecklistItem('Baixar mapa offline', 'before-travel'),
+        makeChecklistItem('Sapato confortável (~20k passos/dia)', 'before-travel'),
+      ];
+      return t;
+    },
+  },
+  {
+    id: 'adventure',
+    name: 'Aventura / natureza',
+    description: 'Trilhas, parques, equipamento de campo.',
+    build: (opts) => {
+      const t = emptyTrip({
+        ...opts,
+        categories: [
+          makeCategory('Voo', 0, '#0A0A0A'),
+          makeCategory('Hospedagem/camping', 0, '#525252'),
+          makeCategory('Aluguel de equipamento', 0, '#78716C'),
+          makeCategory('Alimentação', 0, '#B45309'),
+          makeCategory('Guias / permissões', 0, '#166534'),
+          makeCategory('Seguro reforçado', 0, '#7C2D12'),
+          makeCategory('Extras', 0, '#1E40AF'),
+        ],
+      });
+      t.checklist = [
+        makeChecklistItem('Seguro viagem com cobertura de aventura', 'before-book', { critical: true }),
+        makeChecklistItem('Reservar guias credenciados', 'before-book'),
+        makeChecklistItem('Checar permissões de parques', 'before-book'),
+        makeChecklistItem('Botas amaciadas, capa de chuva, lanterna', 'before-travel', { critical: true }),
+        makeChecklistItem('Kit de primeiros socorros', 'before-travel', { critical: true }),
+        makeChecklistItem('Baixar mapas offline + GPS', 'before-travel'),
+      ];
+      return t;
+    },
+  },
+  {
+    id: 'europe',
+    name: 'Mochilão Europa',
+    description: 'Vários países, trens/hostels.',
+    build: (opts) => {
+      const t = emptyTrip({
+        ...opts,
+        baseCurrency: 'BRL', secondaryCurrencies: ['EUR', 'GBP'],
+        categories: [
+          makeCategory('Voo intercontinental', 0, '#0A0A0A'),
+          makeCategory('Hospedagem (hostels)', 0, '#525252'),
+          makeCategory('Trens / passes', 0, '#78716C'),
+          makeCategory('Alimentação / mercado', 0, '#B45309'),
+          makeCategory('Museus', 0, '#166534'),
+          makeCategory('Cerveja / bares', 0, '#7C2D12'),
+          makeCategory('Extras', 0, '#1E40AF'),
+        ],
+      });
+      t.checklist = [
+        makeChecklistItem('Passaporte válido +6 meses', 'before-book', { critical: true }),
+        makeChecklistItem('Comprar Eurail/Interrail pass', 'before-book'),
+        makeChecklistItem('Reservar hostels dos primeiros dias', 'before-book'),
+        makeChecklistItem('Adaptador universal', 'before-travel'),
+        makeChecklistItem('Mochila 40L + cadeado', 'before-travel'),
+        makeChecklistItem('Cartão sem IOF / Wise / conta global', 'before-travel', { critical: true }),
+      ];
+      return t;
+    },
+  },
+];
+
+/* ==================== CONTEXT ==================== */
+
+const StoreContext = createContext(null);
+
+function useStore() { return useContext(StoreContext); }
+
+function StoreProvider({ children }) {
+  const [store, setStore] = useState(() => {
+    const loaded = loadStore();
+    if (loaded) return loaded;
+    const uruguai = seedUruguai();
+    return { version: 1, trips: [uruguai], activeTripId: uruguai.id, prefs: { theme: 'light' } };
+  });
+
+  useEffect(() => { saveStore(store); }, [store]);
+
+  const api = useMemo(() => ({
+    store,
+    setStore,
+    updateTrip: (id, updater) => setStore(s => ({
+      ...s,
+      trips: s.trips.map(t => t.id === id ? { ...updater(t), updatedAt: new Date().toISOString() } : t),
+    })),
+    addTrip: (trip) => setStore(s => ({
+      ...s,
+      trips: [trip, ...s.trips],
+      activeTripId: trip.id,
+    })),
+    removeTrip: (id) => setStore(s => {
+      const trips = s.trips.filter(t => t.id !== id);
+      return { ...s, trips, activeTripId: s.activeTripId === id ? (trips[0]?.id || null) : s.activeTripId };
+    }),
+    setActive: (id) => setStore(s => ({ ...s, activeTripId: id })),
+  }), [store]);
+
+  return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>;
+}
+
+/* ==================== FX HOOK ==================== */
+
+function useFx(baseCurrency = 'BRL') {
+  const [rates, setRates] = useState(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || 'null');
+      return c && c.base === baseCurrency ? c : null;
+    } catch { return null; }
+  });
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    const r = await fetchRates(baseCurrency);
+    setRates(r);
+    setLoading(false);
+    return r;
+  }, [baseCurrency]);
+
+  useEffect(() => {
+    // Auto-fetch on mount ou se moeda mudou
+    if (!rates || rates.base !== baseCurrency || Date.now() - (rates.ts || 0) > FX_TTL_MS) {
+      refresh();
+    }
+  // eslint-disable-next-line
+  }, [baseCurrency]);
+
+  return { rates, loading, refresh };
+}
+
+/* ==================== ICONS (SVG) ==================== */
+
+const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
+  const paths = {
+    plus: <path d="M12 5v14M5 12h14" />,
+    paperplane: <><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></>,
+    stamp: <><path d="M5 22h14M9 15v3h6v-3M6 15h12l-1.5-6.5a3 3 0 0 0-3-2.5h-3a3 3 0 0 0-3 2.5L6 15z"/></>,
+    compass: <><circle cx="12" cy="12" r="10"/><path d="M16 8l-2 6-6 2 2-6 6-2z"/></>,
+    ticket: <><path d="M3 8v3a2 2 0 0 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 0 1 0-4V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M13 5v2M13 17v2M13 11v2"/></>,
+    minus: <path d="M5 12h14" />,
+    check: <path d="M20 6L9 17l-5-5" />,
+    x: <path d="M18 6L6 18M6 6l12 12" />,
+    trash: <><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" /><path d="M10 11v6M14 11v6" /></>,
+    edit: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></>,
+    duplicate: <><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>,
+    download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></>,
+    upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></>,
+    link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>,
+    printer: <><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+    library: <><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></>,
+    dashboard: <><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></>,
+    money: <><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></>,
+    calendar: <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>,
+    checklist: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>,
+    map: <><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></>,
+    quote: <><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>,
+    users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
+    notes: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></>,
+    chevronDown: <path d="M6 9l6 6 6-6"/>,
+    chevronUp: <path d="M18 15l-6-6-6 6"/>,
+    chevronRight: <path d="M9 18l6-6-6-6"/>,
+    chevronLeft: <path d="M15 18l-9-6 9-6"/>,
+    archive: <><path d="M21 8v13H3V8M23 3H1v5h22z"/><path d="M10 12h4"/></>,
+    star: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>,
+    refresh: <><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>,
+    cloud: <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>,
+    warn: <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></>,
+    info: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></>,
+    globe: <><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
+    mapPin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
+    clock: <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>,
+    external: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></>,
+    menu: <><path d="M3 12h18M3 6h18M3 18h18"/></>,
+    sun: <><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>,
+    move: <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>,
+  };
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+         className={className}>
+      {paths[name] || paths.info}
+    </svg>
+  );
+};
+
+/* ==================== UI ATOMS ==================== */
+
+function Button({ variant = 'ghost', size, icon, children, className = '', ...rest }) {
+  const v = { primary: 'btn-primary', accent: 'btn-accent', ghost: 'btn-ghost', danger: 'btn-danger' }[variant] || 'btn-ghost';
+  const sz = size === 'sm' ? 'btn-sm' : size === 'xs' ? 'btn-xs' : '';
+  return (
+    <button className={cx('btn', v, sz, className)} {...rest}>
+      {icon && <Icon name={icon} size={size === 'xs' ? 12 : 14} />}
+      {children}
+    </button>
+  );
+}
+
+function IconButton({ icon, size = 14, className = '', ...rest }) {
+  return (
+    <button className={cx('p-2 text-ink-3 hover:text-ink hover:bg-paper transition-colors border border-transparent hover:border-rule', className)} style={{borderRadius: 2}} {...rest}>
+      <Icon name={icon} size={size} />
+    </button>
+  );
+}
+
+function TextInput({ className = '', ...rest }) {
+  return <input className={cx('field', className)} {...rest} />;
+}
+
+function NumberInput({ className = '', ...rest }) {
+  return <input type="number" step="any" className={cx('field num', className)} {...rest} />;
+}
+
+function TextArea({ className = '', ...rest }) {
+  return <textarea className={cx('field resize-y', className)} {...rest} />;
+}
+
+function Select({ className = '', children, ...rest }) {
+  return <select className={cx('field', className)} {...rest}>{children}</select>;
+}
+
+function Label({ children, className = '', hint }) {
+  return (
+    <label className={cx('block text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-1.5', className)}>
+      {children}{hint && <span className="ml-1.5 text-ink-4 normal-case tracking-normal italic">· {hint}</span>}
+    </label>
+  );
+}
+
+function Modal({ open, onClose, children, title, footer, size = 'md' }) {
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onEsc);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onEsc); document.body.style.overflow = ''; };
+  }, [open, onClose]);
+  if (!open) return null;
+  const width = size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : size === 'xl' ? 'max-w-5xl' : 'max-w-xl';
+  return (
+    <div className="fixed inset-0 z-50 overlay-in" style={{ backgroundColor: 'rgba(15,26,36,0.55)' }} onClick={onClose}>
+      <div className="min-h-full flex items-start sm:items-center justify-center p-3 sm:p-6">
+        <div className={cx('w-full bg-paperx border border-ink fade-in', width)}
+             style={{boxShadow: '6px 6px 0 var(--ink)', borderRadius: 2}}
+             onClick={e => e.stopPropagation()}>
+          {title && (
+            <div className="hairline-solid px-5 py-4 flex items-center justify-between bg-paper/40">
+              <h2 className="text-lg font-bold text-ink">{title}</h2>
+              <IconButton icon="x" onClick={onClose} />
+            </div>
+          )}
+          <div className="px-5 py-5">{children}</div>
+          {footer && <div className="border-t border-rule px-5 py-3 flex items-center justify-end gap-2 bg-paper/40">{footer}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Confirm({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirmar', variant = 'primary' }) {
+  return (
+    <Modal open={open} onClose={onClose} title={title} size="sm"
+      footer={
+        <>
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button variant={variant === 'danger' ? 'danger' : 'primary'} onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</Button>
+        </>
+      }>
+      <p className="text-sm text-ink-2">{message}</p>
+    </Modal>
+  );
+}
+
+function Tabs({ tabs, active, onChange, className = '' }) {
+  return (
+    <div className={cx('flex items-center gap-1 border-b border-rule overflow-x-auto no-scrollbar', className)}>
+      {tabs.map(t => (
+        <button key={t.id} onClick={() => onChange(t.id)}
+                className={cx(
+                  'px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 border-b-2 -mb-px whitespace-nowrap transition-colors',
+                  active === t.id ? 'border-accent text-ink' : 'border-transparent text-ink-4 hover:text-ink'
+                )}>
+          {t.icon && <Icon name={t.icon} size={13} />}
+          {t.label}
+          {t.count != null && <span className="text-[9px] text-accent font-bold">{t.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon, title, description, action }) {
+  return (
+    <div className="text-center py-16 px-6 border border-dashed border-rule-2" style={{borderRadius: 2}}>
+      {icon && (
+        <div className="inline-flex flex-col items-center mb-4">
+          <div className="w-16 h-16 rounded-full border-2 border-ink flex items-center justify-center bg-paperx"><Icon name={icon} size={22} /></div>
+        </div>
+      )}
+      <h3 className="text-2xl font-bold text-ink mb-2">{title}</h3>
+      {description && <p className="text-sm text-ink-3 max-w-md mx-auto mb-5">{description}</p>}
+      {action}
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, tone = 'ink', accent = false }) {
+  const toneCls = { ink:'text-ink', ok:'text-ok', warn:'text-warn', bad:'text-bad', muted:'text-ink-3', accent:'text-accent-d' }[tone] || 'text-ink';
+  return (
+    <div className={cx('card p-4 sm:p-5 relative overflow-hidden', accent && 'border-ink')} style={accent ? {boxShadow: '3px 3px 0 var(--ink)'} : {}}>
+      <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4 mb-2">{label}</div>
+      <div className={cx('font-bold text-3xl sm:text-4xl leading-none tracking-tight num', toneCls)}>{value}</div>
+      {sub && <div className="text-[11px] text-ink-3 mt-2 font-mono">{sub}</div>}
+    </div>
+  );
+}
+
+function Progress({ value, max, color = 'var(--ink)' }) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  return (
+    <div className="w-full bg-paper h-1.5 relative overflow-hidden">
+      <div className="h-full transition-all" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  );
+}
+
+function SectionHeader({ eyebrow, title, action }) {
+  return (
+    <div className="flex items-end justify-between gap-3 mb-4 flex-wrap">
+      <div>
+        {eyebrow && <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4 mb-1">{eyebrow}</div>}
+        <h2 className="font-bold text-2xl sm:text-3xl leading-none text-ink">{title}</h2>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/* ==================== APP ROOT ==================== */
+
+function App() {
+  return (
+    <StoreProvider>
+      <AppShell />
+    </StoreProvider>
+  );
+}
+
+function AppShell() {
+  const { store, setActive, addTrip } = useStore();
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(!store.activeTripId);
+  const [importPreview, setImportPreview] = useState(null);
+
+  const activeTrip = store.trips.find(t => t.id === store.activeTripId) || null;
+  const openTrip = (id) => { setActive(id); setShowLibrary(false); };
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#trip=')) {
+      const encoded = hash.slice(6);
+      const trip = decodeShareableToTrip(encoded);
+      if (trip && trip.days) {
+        setImportPreview(trip);
+        history.replaceState(null, '', location.pathname);
+      }
+    }
+  }, []);
+
+  const acceptImport = () => {
+    if (!importPreview) return;
+    const t = { ...importPreview, id: uid('trip_'), name: importPreview.name + ' (compartilhada)', createdAt: new Date().toISOString() };
+    addTrip(t);
+    setImportPreview(null);
+    setShowLibrary(false);
+  };
+
+  return (
+    <div className="min-h-screen text-ink relative">
+      {(showLibrary || !activeTrip)
+        ? <LibraryView onOpen={openTrip} onClose={() => activeTrip && setShowLibrary(false)} onConvert={() => setConvertOpen(true)} />
+        : <TripView trip={activeTrip} onOpenLibrary={() => setShowLibrary(true)} onConvert={() => setConvertOpen(true)} />
+      }
+
+      <ConverterModal open={convertOpen} onClose={() => setConvertOpen(false)} baseCurrency={activeTrip?.baseCurrency || 'BRL'} />
+
+      <Modal open={!!importPreview} onClose={() => setImportPreview(null)} title="Importar viagem compartilhada" size="sm"
+        footer={<><Button onClick={() => setImportPreview(null)}>Descartar</Button><Button variant="primary" onClick={acceptImport}>Importar</Button></>}>
+        {importPreview && (
+          <div>
+            <div className="text-2xl font-bold text-ink">{importPreview.name}</div>
+            <div className="text-sm text-inkm mt-1">{importPreview.destination}</div>
+            <div className="text-xs text-inkm mt-2 font-mono">{fmtDate(importPreview.startDate)} → {fmtDate(importPreview.endDate, { year: true })} · {importPreview.days?.length || 0} dias</div>
+            <div className="text-xs text-inkm mt-3">A viagem entra na sua biblioteca. Pode editar depois.</div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+/* ==================== SIDEBAR + BOTTOM NAV ==================== */
+
+const TRIP_TABS = [
+  { id: 'dashboard', label: 'Visão geral', icon: 'dashboard' },
+  { id: 'itinerary', label: 'Roteiro',     icon: 'calendar' },
+  { id: 'budget',    label: 'Orçamento',   icon: 'money' },
+  { id: 'checklist', label: 'Checklist',   icon: 'checklist' },
+  { id: 'map',       label: 'Mapa',        icon: 'map' },
+  { id: 'quotes',    label: 'Cotações',    icon: 'quote' },
+  { id: 'split',     label: 'Divisão',     icon: 'users' },
+  { id: 'notes',     label: 'Diário',      icon: 'notes' },
+];
+
+function Sidebar({ trip, tab, onTab, onOpenLibrary, onConvert }) {
+  const { store, setActive } = useStore();
+  const pendingCritical = trip.checklist.filter(c => !c.done && c.critical).length;
+  const otherTrips = store.trips.filter(t => t.id !== trip.id && !t.archived);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const nDays = daysBetween(trip.startDate, trip.endDate) + 1;
+  const cityCode = destCode(trip.destination) || 'TRP';
+
+  return (
+    <aside className="hidden lg:flex flex-col w-[280px] h-screen sticky top-0 border-r border-rule bg-paperx/40 no-print relative z-20">
+      <div className="p-5 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{background: 'var(--accent)'}}>P</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-base font-bold leading-none">Passageiro</div>
+          <div className="text-xs text-ink-3 mt-0.5">planejador de viagens</div>
+        </div>
+        <button onClick={onConvert} className="text-ink-3 hover:text-ink p-1 rounded-lg hover:bg-paper-2" title="Conversor de câmbio">
+          <Icon name="refresh" size={16} />
+        </button>
+      </div>
+
+      <div className="mx-3 relative">
+        <button onClick={() => setSwitcherOpen(v => !v)} className="w-full text-left p-3 rounded-xl border border-rule hover:border-ink-3 transition-colors bg-white">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] uppercase tracking-wider text-ink-3 font-semibold">Viagem ativa</span>
+            <Icon name={switcherOpen ? 'chevronUp' : 'chevronDown'} size={14} className="text-ink-3 flex-shrink-0" />
+          </div>
+          <div className="font-bold text-base leading-tight truncate">{trip.name}</div>
+          <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-3">
+            <span>{nDays} dias</span>
+            <span className="w-1 h-1 rounded-full bg-ink-4"></span>
+            <span>{trip.baseCurrency}</span>
+          </div>
+        </button>
+        {switcherOpen && (
+          <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-rule rounded-xl z-30 max-h-72 overflow-hidden shadow-lg" style={{boxShadow:'var(--shadow-lg)'}}>
+            {otherTrips.length === 0 && <div className="p-4 text-sm text-ink-3">Nenhuma outra viagem ativa.</div>}
+            {otherTrips.map(t => (
+              <button key={t.id} onClick={() => { setActive(t.id); setSwitcherOpen(false); }}
+                className="w-full text-left px-4 py-3 hover:bg-paper-2 border-b border-rule last:border-b-0 transition-colors">
+                <div className="text-sm font-semibold">{t.name}</div>
+                <div className="text-xs text-ink-3 mt-0.5">{fmtDate(t.startDate)}</div>
+              </button>
+            ))}
+            <button onClick={() => { onOpenLibrary(); setSwitcherOpen(false); }}
+              className="w-full text-left px-4 py-3 border-t border-rule text-sm font-semibold hover:bg-paper-2 transition-colors text-accent">
+              Ver todas as viagens →
+            </button>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex-1 mt-6 px-3 overflow-y-auto space-y-1">
+        <div className="text-[10px] uppercase tracking-wider text-ink-3 font-bold px-3 mb-2">Planejamento</div>
+        {TRIP_TABS.map(t => {
+          const count = t.id === 'checklist' && pendingCritical > 0 ? pendingCritical : null;
+          return (
+            <div key={t.id} className={cx('nav-item', tab === t.id && 'active')} onClick={() => onTab(t.id)}>
+              <Icon name={t.icon} size={17} />
+              <span>{t.label}</span>
+              {count && <span className="badge">{count}</span>}
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-rule p-3 space-y-1">
+        <div className="nav-item" onClick={onOpenLibrary}>
+          <Icon name="library" size={17} />
+          <span>Todas as viagens</span>
+        </div>
+        <div className="nav-item" onClick={onConvert}>
+          <Icon name="money" size={17} />
+          <span>Câmbio</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function MobileTopBar({ trip, onOpenLibrary, onConvert }) {
+  return (
+    <header className="lg:hidden sticky top-0 z-40 bg-paper/95 backdrop-blur border-b border-rule safe-t no-print">
+      <div className="px-4 h-14 flex items-center justify-between gap-3">
+        <button onClick={onOpenLibrary} className="flex items-center gap-2.5 min-w-0" title="Biblioteca">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base" style={{background: 'var(--accent)'}}>P</div>
+          <div className="min-w-0 text-left">
+            <div className="text-[10px] text-ink-3 font-semibold uppercase tracking-wider">Viagem</div>
+            <div className="text-sm font-bold leading-tight truncate max-w-[180px]">{trip.name}</div>
+          </div>
+        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={onConvert} className="p-2 text-ink-3 hover:text-ink"><Icon name="refresh" size={16} /></button>
+          <button onClick={onOpenLibrary} className="p-2 text-ink-3 hover:text-ink"><Icon name="library" size={16} /></button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function MobileBottomNav({ tab, onTab, criticalCount }) {
+  const items = [
+    { id: 'dashboard', label: 'Painel',    icon: 'dashboard' },
+    { id: 'itinerary', label: 'Roteiro',   icon: 'calendar' },
+    { id: 'budget',    label: 'Custos',    icon: 'money' },
+    { id: 'checklist', label: 'Lista',     icon: 'checklist' },
+    { id: 'map',       label: 'Mapa',      icon: 'map' },
+  ];
+  return (
+    <>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-paper/95 backdrop-blur border-t border-rule flex safe-b no-print">
+        {items.map(it => (
+          <button key={it.id} onClick={() => onTab(it.id)} className={cx('bnav-item', tab === it.id && 'active')}>
+            <Icon name={it.icon} size={20} strokeWidth={1.6} />
+            <span>{it.label}</span>
+            {it.id === 'checklist' && criticalCount > 0 && <span className="absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-accent"></span>}
+          </button>
+        ))}
+      </nav>
+      <div className="lg:hidden h-16"></div>
+    </>
+  );
+}
+
+function destCode(destination) {
+  if (!destination) return null;
+  const codes = {
+    'uruguai': 'URY', 'uruguay': 'URY', 'montevidéu': 'MVD', 'montevideu': 'MVD',
+    'argentina': 'ARG', 'buenos aires': 'BUE',
+    'chile': 'CHL', 'santiago': 'SCL',
+    'peru': 'PER', 'lima': 'LIM',
+    'bolívia': 'BOL', 'bolivia': 'BOL',
+    'portugal': 'PRT', 'lisboa': 'LIS', 'porto': 'OPO',
+    'espanha': 'ESP', 'madri': 'MAD', 'barcelona': 'BCN',
+    'frança': 'FRA', 'paris': 'PAR',
+    'itália': 'ITA', 'italia': 'ITA', 'roma': 'ROM',
+    'brasil': 'BRA', 'rio': 'RIO', 'são paulo': 'SAO',
+    'eua': 'USA', 'nova york': 'NYC', 'ny': 'NYC',
+    'japão': 'JPN', 'tóquio': 'TYO',
+  };
+  const d = destination.toLowerCase();
+  for (const [k, v] of Object.entries(codes)) if (d.includes(k)) return v;
+  // fallback: primeiras 3 letras da primeira palavra
+  const first = destination.split(/[\s,]+/)[0] || '';
+  return first.slice(0, 3).toUpperCase();
+}
+
+/* ==================== LIBRARY ==================== */
+
+function LibraryView({ onOpen, onClose, onConvert }) {
+  const { store, addTrip, removeTrip, updateTrip } = useStore();
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const fileRef = useRef(null);
+
+  const trips = store.trips.filter(t => !!t.archived === showArchived);
+
+  const duplicate = (t) => {
+    const copy = { ...clone(t), id: uid('trip_'), name: t.name + ' (cópia)', createdAt: new Date().toISOString() };
+    addTrip(copy);
+  };
+
+  const exportOne = (t) => {
+    const blob = new Blob([JSON.stringify(t, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${t.name.replace(/[^\w-]+/g,'_').toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAll = () => {
+    const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `travel-planner-backup-${isoToday()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importFile = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (data.trips && Array.isArray(data.trips)) {
+          // Backup completo
+          data.trips.forEach(t => addTrip({ ...t, id: uid('trip_') }));
+        } else if (data.id && data.days) {
+          // Viagem única
+          addTrip({ ...data, id: uid('trip_'), name: (data.name||'Importada') + ' (importada)' });
+        } else alert('Formato desconhecido');
+      } catch { alert('JSON inválido'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const activeCount = store.trips.filter(t=>!t.archived).length;
+  const archivedCount = store.trips.filter(t=>t.archived).length;
+
+  return (
+    <div className="min-h-screen relative">
+      {/* Header hero */}
+      <header className="border-b border-rule px-4 sm:px-8 lg:px-12 pt-8 lg:pt-10 pb-8 relative">
+        <div className="max-w-6xl mx-auto relative">
+          <div className="flex items-start justify-between gap-4 mb-10">
+            <button onClick={() => window.location.reload()} className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{background: 'var(--accent)'}}>P</div>
+              <div className="text-left">
+                <div className="text-lg font-bold leading-none">Passageiro</div>
+                <div className="text-xs text-ink-3 mt-1">planejador de viagens</div>
+              </div>
+            </button>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <input type="file" ref={fileRef} onChange={importFile} accept="application/json" className="hidden" />
+              <Button variant="ghost" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>Importar</Button>
+              <Button variant="ghost" size="sm" icon="download" onClick={exportAll}>Backup</Button>
+              {onConvert && <Button variant="ghost" size="sm" icon="refresh" onClick={onConvert}>Câmbio</Button>}
+              <Button variant="accent" size="sm" icon="plus" onClick={() => setWizardOpen(true)}>Nova viagem</Button>
+            </div>
+          </div>
+          <div className="max-w-3xl">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-ink leading-tight tracking-tight">Suas viagens</h1>
+            <p className="text-base sm:text-lg text-ink-2 mt-4 max-w-xl leading-relaxed">
+              Todas as viagens em um só lugar. Do primeiro esboço até o último check-in — orçamento, roteiro, cotações e checklist.
+            </p>
+            <div className="flex items-center gap-3 mt-6">
+              <div className="chip chip-ink">{activeCount} {activeCount === 1 ? 'ativa' : 'ativas'}</div>
+              {archivedCount > 0 && <div className="chip">{archivedCount} {archivedCount === 1 ? 'arquivada' : 'arquivadas'}</div>}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 py-8 relative">
+        {store.trips.some(t => t.archived) && (
+          <div className="mb-6 flex items-center gap-2 bg-paper-2 p-1 rounded-full w-fit">
+            <button onClick={() => setShowArchived(false)} className={cx('px-4 py-1.5 text-sm font-semibold rounded-full transition-colors', !showArchived ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink')}>Ativas ({activeCount})</button>
+            <button onClick={() => setShowArchived(true)} className={cx('px-4 py-1.5 text-sm font-semibold rounded-full transition-colors', showArchived ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink')}>Arquivadas ({archivedCount})</button>
+          </div>
+        )}
+
+        {trips.length === 0 ? (
+          <EmptyState
+            icon="ticket"
+            title={showArchived ? 'Nada arquivado' : 'Nenhuma viagem ainda'}
+            description={showArchived ? 'Viagens arquivadas aparecem aqui.' : 'Comece pela sua primeira ideia. Fica tudo salvo localmente.'}
+            action={!showArchived && <Button variant="accent" icon="plus" onClick={() => setWizardOpen(true)}>Criar primeira viagem</Button>}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {trips.map((t, i) => (
+              <div key={t.id} className={`fade-in-${Math.min(5, i+1)}`}>
+                <TripCard
+                  trip={t}
+                  onOpen={() => onOpen(t.id)}
+                  onDuplicate={() => duplicate(t)}
+                  onArchive={() => updateTrip(t.id, tt => ({ ...tt, archived: !tt.archived }))}
+                  onExport={() => exportOne(t)}
+                  onDelete={() => setConfirmDel(t)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      <NewTripWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={(trip) => { addTrip(trip); setWizardOpen(false); onOpen(trip.id); }} existingTrips={store.trips} />
+
+      <Confirm
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        onConfirm={() => removeTrip(confirmDel.id)}
+        title="Apagar viagem?"
+        message={`Isso remove "${confirmDel?.name}" permanentemente. Não dá pra desfazer. Se quiser guardar, use "Exportar" antes.`}
+        confirmLabel="Apagar"
+        variant="danger"
+      />
+    </div>
+  );
+}
+
+function TripCard({ trip, onOpen, onDuplicate, onArchive, onExport, onDelete }) {
+  const spent = tripSpent(trip);
+  const nDays = daysBetween(trip.startDate, trip.endDate) + 1;
+  const status = tripStatusChip(trip);
+  const daysToGo = daysBetween(isoToday(), trip.startDate);
+  const pctSpent = trip.budgetCeiling ? Math.min(100, (spent / trip.budgetCeiling) * 100) : 0;
+  const overBudget = trip.budgetCeiling && spent > trip.budgetCeiling;
+
+  return (
+    <article className="card card-hover cursor-pointer overflow-hidden group" onClick={onOpen}>
+      {/* Hero band */}
+      <div className="h-24 relative overflow-hidden" style={{background: `linear-gradient(135deg, ${trip.categories[0]?.color || '#FF385C'}22 0%, ${trip.categories[1]?.color || '#484848'}18 100%)`}}>
+        <div className="absolute inset-0 flex items-center justify-between px-5">
+          <div>
+            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{trip.destination?.split(/[,\(]/)[0] || 'Sem destino'}</div>
+            <div className="mt-1 flex items-center gap-2 text-xs text-ink-3 font-medium">
+              <Icon name="calendar" size={12} />
+              <span>{fmtDate(trip.startDate)} → {fmtDate(trip.endDate, { year: true })}</span>
+            </div>
+          </div>
+          <span className={cx('chip', status.cls)}>{status.text}</span>
+        </div>
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white/95 backdrop-blur rounded-full px-1 py-0.5 shadow-sm">
+          <IconButton icon="duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicar" />
+          <IconButton icon="archive" onClick={(e) => { e.stopPropagation(); onArchive(); }} title={trip.archived ? 'Desarquivar' : 'Arquivar'} />
+          <IconButton icon="download" onClick={(e) => { e.stopPropagation(); onExport(); }} title="Exportar" />
+          <IconButton icon="trash" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Apagar" />
+        </div>
+      </div>
+
+      <div className="p-5">
+        <h3 className="text-xl font-bold text-ink leading-tight truncate">{trip.name}</h3>
+
+        <div className="mt-3 flex items-center gap-3 text-sm text-ink-3">
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-ink-3"></span>{nDays} dias</span>
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-ink-3"></span>{trip.days.length} planejados</span>
+          {daysToGo > 0 && daysToGo <= 90 && <span className="flex items-center gap-1 text-accent font-semibold ml-auto">em {daysToGo}d</span>}
+        </div>
+
+        {trip.budgetCeiling > 0 && (
+          <div className="mt-4">
+            <div className="flex items-baseline justify-between mb-1.5">
+              <div className="text-xs text-ink-3 font-medium">Orçamento</div>
+              <div className="text-sm font-semibold num">
+                <span className={cx(overBudget && 'text-bad')}>{fmtMoneyCompact(spent, trip.baseCurrency)}</span>
+                <span className="text-ink-4"> de {fmtMoneyCompact(trip.budgetCeiling, trip.baseCurrency)}</span>
+              </div>
+            </div>
+            <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
+              <div className={cx('h-full transition-all rounded-full', overBudget ? 'bg-bad' : 'bg-ink')} style={{width: `${pctSpent}%`}}></div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 pt-4 border-t border-rule flex items-center justify-between text-xs text-ink-3">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1"><Icon name="calendar" size={12} /> {trip.days.length}</span>
+            <span className="flex items-center gap-1"><Icon name="checklist" size={12} /> {trip.checklist.filter(c=>c.done).length}/{trip.checklist.length}</span>
+            <span className="flex items-center gap-1"><Icon name="quote" size={12} /> {trip.quotes.length}</span>
+          </div>
+          <span className="text-ink font-semibold flex items-center gap-1">Abrir <Icon name="chevronRight" size={12} /></span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function tripStatusChip(trip) {
+  const today = isoToday();
+  if (trip.archived) return { text: 'Arquivada', cls: '' };
+  if (trip.endDate < today) return { text: 'Concluída', cls: 'chip-ok' };
+  if (trip.startDate <= today && trip.endDate >= today) return { text: 'Em andamento', cls: 'chip-accent' };
+  const d = daysBetween(today, trip.startDate);
+  if (d <= 30) return { text: `Em ${d}d`, cls: 'chip-warn' };
+  return { text: `${d}d p/ ir`, cls: 'chip-ink' };
+}
+
+function tripSpent(trip) {
+  // Soma custos dos blocos convertidos pra baseCurrency (aproximado: só considera mesma moeda por ora)
+  let total = 0;
+  trip.days.forEach(d => d.blocks.forEach(b => {
+    if (b.cost != null && (b.currency || trip.baseCurrency) === trip.baseCurrency) total += Number(b.cost);
+  }));
+  return total;
+}
+
+/* ==================== NEW TRIP WIZARD ==================== */
+
+function NewTripWizard({ open, onClose, onCreate, existingTrips }) {
+  const [step, setStep] = useState(0);
+  const [templateId, setTemplateId] = useState('blank');
+  const [duplicateFromId, setDuplicateFromId] = useState('');
+  const [form, setForm] = useState({
+    name: '', destination: '',
+    startDate: isoToday(),
+    endDate: isoAddDays(isoToday(), 7),
+    baseCurrency: 'BRL',
+    secondaryCurrencies: [],
+    budgetCeiling: '',
+  });
+
+  useEffect(() => { if (open) { setStep(0); setTemplateId('blank'); setDuplicateFromId(''); setForm(f => ({ ...f, startDate: isoToday(), endDate: isoAddDays(isoToday(),7) })); } }, [open]);
+
+  const create = () => {
+    let trip;
+    if (duplicateFromId) {
+      const src = existingTrips.find(t => t.id === duplicateFromId);
+      if (src) {
+        trip = { ...clone(src), id: uid('trip_'), name: form.name || (src.name + ' (cópia)'),
+          destination: form.destination || src.destination,
+          startDate: form.startDate, endDate: form.endDate,
+          baseCurrency: form.baseCurrency, secondaryCurrencies: form.secondaryCurrencies,
+          budgetCeiling: Number(form.budgetCeiling) || 0,
+          createdAt: new Date().toISOString(),
+        };
+        // Ajusta datas dos dias proporcionalmente
+        const oldStart = src.startDate;
+        const shift = daysBetween(oldStart, form.startDate);
+        trip.days = src.days.map(d => ({ ...clone(d), id: uid('d_'), date: isoAddDays(d.date, shift) }));
+      }
+    } else {
+      const template = TEMPLATES.find(t => t.id === templateId);
+      trip = template.build({
+        name: form.name || 'Nova viagem',
+        destination: form.destination,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        baseCurrency: form.baseCurrency,
+        secondaryCurrencies: form.secondaryCurrencies,
+        budgetCeiling: Number(form.budgetCeiling) || 0,
+      });
+    }
+    onCreate(trip);
+  };
+
+  const step2Valid = form.name.trim().length > 0 && form.startDate && form.endDate && form.startDate <= form.endDate;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Nova viagem" size="lg"
+      footer={
+        step === 0 ? (
+          <>
+            <Button onClick={onClose}>Cancelar</Button>
+            <Button variant="primary" onClick={() => setStep(1)}>Próximo</Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => setStep(0)}>Voltar</Button>
+            <Button variant="primary" disabled={!step2Valid} onClick={create}>Criar viagem</Button>
+          </>
+        )
+      }>
+      {step === 0 ? (
+        <div>
+          <p className="text-sm text-inkm mb-4">Escolha um ponto de partida.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {TEMPLATES.map(t => (
+              <button key={t.id} onClick={() => { setTemplateId(t.id); setDuplicateFromId(''); }}
+                className={cx('text-left p-3 rounded-lg border transition-colors',
+                  templateId === t.id && !duplicateFromId
+                    ? 'border-ink bg-stone-50' : 'border-line hover:border-lineh')}>
+                <div className="text-sm font-semibold text-ink">{t.name}</div>
+                <div className="text-xs text-inkm mt-0.5">{t.description}</div>
+              </button>
+            ))}
+            {existingTrips.length > 0 && (
+              <button onClick={() => { setDuplicateFromId(existingTrips[0].id); }}
+                className={cx('text-left p-3 rounded-lg border transition-colors sm:col-span-2',
+                  duplicateFromId ? 'border-ink bg-stone-50' : 'border-line hover:border-lineh')}>
+                <div className="text-sm font-semibold text-ink">Duplicar uma viagem existente</div>
+                <div className="text-xs text-inkm mt-0.5">Copia estrutura, categorias e checklist de uma viagem sua.</div>
+                {duplicateFromId && (
+                  <Select value={duplicateFromId} onChange={e => setDuplicateFromId(e.target.value)} onClick={e => e.stopPropagation()} className="mt-2">
+                    {existingTrips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </Select>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <Label>Nome da viagem</Label>
+            <TextInput value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Uruguai · verão 2027" autoFocus />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Destino</Label>
+            <TextInput value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Cidade, região ou país" />
+          </div>
+          <div>
+            <Label>Data de ida</Label>
+            <TextInput type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
+          </div>
+          <div>
+            <Label>Data de volta</Label>
+            <TextInput type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
+          </div>
+          <div>
+            <Label>Moeda base</Label>
+            <Select value={form.baseCurrency} onChange={e => setForm({ ...form, baseCurrency: e.target.value, secondaryCurrencies: form.secondaryCurrencies.filter(c => c !== e.target.value) })}>
+              {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+            </Select>
+          </div>
+          <div>
+            <Label>Teto de orçamento</Label>
+            <NumberInput value={form.budgetCeiling} onChange={e => setForm({ ...form, budgetCeiling: e.target.value })} placeholder="Ex: 10000" />
+          </div>
+          <div className="sm:col-span-2">
+            <Label hint="opcional">Moedas secundárias</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {CURRENCIES.filter(c => c.code !== form.baseCurrency).map(c => {
+                const on = form.secondaryCurrencies.includes(c.code);
+                return (
+                  <button key={c.code} onClick={() => setForm({ ...form,
+                    secondaryCurrencies: on
+                      ? form.secondaryCurrencies.filter(x => x !== c.code)
+                      : [...form.secondaryCurrencies, c.code] })}
+                    className={cx('chip', on ? 'chip-ink' : '')}>
+                    {c.code}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/* ==================== TRIP VIEW ==================== */
+
+function TripView({ trip, onOpenLibrary, onConvert }) {
+  const [tab, setTab] = useState('dashboard');
+  const fx = useFx(trip.baseCurrency);
+  const daysToGo = daysBetween(isoToday(), trip.startDate);
+  const criticalCount = trip.checklist.filter(c => !c.done && c.critical).length;
+
+  return (
+    <div className="lg:grid" style={{ gridTemplateColumns: '280px 1fr' }}>
+      <Sidebar trip={trip} tab={tab} onTab={setTab} onOpenLibrary={onOpenLibrary} onConvert={onConvert} />
+      <div className="flex flex-col min-h-screen relative">
+        <MobileTopBar trip={trip} onOpenLibrary={onOpenLibrary} onConvert={onConvert} />
+        <main className="flex-1 px-4 sm:px-8 lg:px-10 py-6 lg:py-10 max-w-[1200px] w-full mx-auto lg:mx-0 relative z-10">
+          <TripHeader trip={trip} daysToGo={daysToGo} />
+          <div className="mt-8 fade-in-1" key={tab}>
+            {tab === 'dashboard' && <DashboardTab trip={trip} fx={fx} onGo={setTab} />}
+            {tab === 'budget'    && <BudgetTab trip={trip} fx={fx} />}
+            {tab === 'itinerary' && <ItineraryTab trip={trip} fx={fx} />}
+            {tab === 'checklist' && <ChecklistTab trip={trip} />}
+            {tab === 'map'       && <MapTab trip={trip} />}
+            {tab === 'quotes'    && <QuotesTab trip={trip} fx={fx} />}
+            {tab === 'split'     && <SplitTab trip={trip} fx={fx} />}
+            {tab === 'notes'     && <NotesTab trip={trip} />}
+          </div>
+        </main>
+        <MobileBottomNav tab={tab} onTab={setTab} criticalCount={criticalCount} />
+      </div>
+    </div>
+  );
+}
+
+function TripHeader({ trip, daysToGo }) {
+  const [editing, setEditing] = useState(false);
+  const [settings, setSettings] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const nDays = daysBetween(trip.startDate, trip.endDate) + 1;
+  const status = tripStatusChip(trip);
+
+  const share = async () => {
+    const url = makeShareableUrl(trip);
+    if (!url) { alert('Erro ao gerar link.'); return; }
+    if (url.length > 8000) {
+      const ok = confirm(`O link ficou grande (${(url.length/1024).toFixed(1)}KB). Alguns apps podem cortar. Copiar mesmo assim?`);
+      if (!ok) return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { prompt('Copie o link:', url); }
+  };
+
+  const printPage = () => window.print();
+
+  const exportTrip = () => {
+    const blob = new Blob([JSON.stringify(trip, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${trip.name.replace(/[^\w-]+/g,'_').toLowerCase()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="relative fade-in">
+      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <span className="text-xs font-semibold text-ink-3 uppercase tracking-wider">{trip.destination || 'Sem destino'}</span>
+            <span className={cx('chip', status.cls)}>{status.text}</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-ink leading-tight tracking-tight">{trip.name}</h1>
+          <div className="mt-3 flex items-center gap-4 text-sm text-ink-2 flex-wrap">
+            <span className="flex items-center gap-1.5"><Icon name="calendar" size={14} className="text-ink-3" />{fmtDate(trip.startDate)} → {fmtDate(trip.endDate, { year: true })}</span>
+            <span className="w-1 h-1 rounded-full bg-ink-4"></span>
+            <span>{nDays} {nDays === 1 ? 'dia' : 'dias'}</span>
+            {daysToGo > 0 && daysToGo <= 120 && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-ink-4"></span>
+                <span className="text-accent font-semibold">em {daysToGo} {daysToGo === 1 ? 'dia' : 'dias'}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 no-print flex-shrink-0">
+          <IconButton icon="link" onClick={share} title={copied ? 'Link copiado!' : 'Copiar link compartilhável'} />
+          <IconButton icon="download" onClick={exportTrip} title="Exportar JSON" />
+          <IconButton icon="printer" onClick={printPage} title="Imprimir / salvar em PDF" />
+          <IconButton icon="edit" onClick={() => setEditing(true)} title="Editar viagem" />
+          <IconButton icon="settings" onClick={() => setSettings(true)} title="Configurações" />
+        </div>
+      </div>
+
+      {copied && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white text-sm px-5 py-3 z-50 fade-in font-medium rounded-lg" style={{boxShadow:'var(--shadow-lg)'}}>Link copiado ✓</div>}
+
+      <TripEditModal open={editing} onClose={() => setEditing(false)} trip={trip} />
+      <TripSettingsModal open={settings} onClose={() => setSettings(false)} trip={trip} />
+    </div>
+  );
+}
+
+function TripEditModal({ open, onClose, trip }) {
+  const { updateTrip } = useStore();
+  const [f, setF] = useState(trip);
+  useEffect(() => { if (open) setF(trip); }, [open, trip]);
+  const save = () => {
+    updateTrip(trip.id, t => ({ ...t, name: f.name, destination: f.destination, startDate: f.startDate, endDate: f.endDate, budgetCeiling: Number(f.budgetCeiling) || 0 }));
+    onClose();
+  };
+  return (
+    <Modal open={open} onClose={onClose} title="Editar viagem" size="md"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save}>Salvar</Button></>}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2"><Label>Nome</Label><TextInput value={f.name} onChange={e => setF({...f, name: e.target.value})} /></div>
+        <div className="sm:col-span-2"><Label>Destino</Label><TextInput value={f.destination} onChange={e => setF({...f, destination: e.target.value})} /></div>
+        <div><Label>Ida</Label><TextInput type="date" value={f.startDate} onChange={e => setF({...f, startDate: e.target.value})} /></div>
+        <div><Label>Volta</Label><TextInput type="date" value={f.endDate} onChange={e => setF({...f, endDate: e.target.value})} /></div>
+        <div className="sm:col-span-2"><Label>Teto de orçamento ({f.baseCurrency})</Label><NumberInput value={f.budgetCeiling} onChange={e => setF({...f, budgetCeiling: e.target.value})} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+function TripSettingsModal({ open, onClose, trip }) {
+  const { updateTrip } = useStore();
+  const [f, setF] = useState(trip);
+  useEffect(() => { if (open) setF(trip); }, [open, trip]);
+  const save = () => {
+    updateTrip(trip.id, t => ({ ...t, baseCurrency: f.baseCurrency, secondaryCurrencies: f.secondaryCurrencies, travelers: f.travelers }));
+    onClose();
+  };
+  return (
+    <Modal open={open} onClose={onClose} title="Configurações da viagem" size="lg"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save}>Salvar</Button></>}>
+      <div className="space-y-5">
+        <div>
+          <Label>Moeda base</Label>
+          <Select value={f.baseCurrency} onChange={e => setF({ ...f, baseCurrency: e.target.value, secondaryCurrencies: f.secondaryCurrencies.filter(c => c !== e.target.value) })}>
+            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+          </Select>
+        </div>
+        <div>
+          <Label>Moedas secundárias</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {CURRENCIES.filter(c => c.code !== f.baseCurrency).map(c => {
+              const on = f.secondaryCurrencies.includes(c.code);
+              return (
+                <button key={c.code} onClick={() => setF({ ...f, secondaryCurrencies: on ? f.secondaryCurrencies.filter(x => x !== c.code) : [...f.secondaryCurrencies, c.code] })}
+                  className={cx('chip', on ? 'chip-ink' : '')}>{c.code}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="hairline pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <Label className="mb-0">Companheiros de viagem</Label>
+            <Button size="xs" icon="plus" onClick={() => setF({ ...f, travelers: [...f.travelers, { id: uid('t_'), name: '', color: CATEGORY_COLORS[f.travelers.length % CATEGORY_COLORS.length] }] })}>Adicionar</Button>
+          </div>
+          {f.travelers.length === 0 && <p className="text-xs text-inkm">Adicione quem vai junto para dividir despesas.</p>}
+          <div className="space-y-2">
+            {f.travelers.map((t, i) => (
+              <div key={t.id} className="flex items-center gap-2">
+                <input type="color" value={t.color} onChange={e => setF({ ...f, travelers: f.travelers.map(x => x.id === t.id ? { ...x, color: e.target.value } : x) })} className="w-8 h-8 rounded border border-line cursor-pointer" />
+                <TextInput className="flex-1" value={t.name} onChange={e => setF({ ...f, travelers: f.travelers.map(x => x.id === t.id ? { ...x, name: e.target.value } : x) })} placeholder="Nome" />
+                <IconButton icon="trash" onClick={() => setF({ ...f, travelers: f.travelers.filter(x => x.id !== t.id) })} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ==================== DASHBOARD TAB ==================== */
+
+function DashboardTab({ trip, fx, onGo }) {
+  const spent = computeSpent(trip, fx);
+  const budgetedTotal = trip.categories.reduce((s, c) => s + Number(c.budgeted || 0), 0);
+  const pctSpent = trip.budgetCeiling ? Math.round((spent / trip.budgetCeiling) * 100) : 0;
+  const daysUntil = daysBetween(isoToday(), trip.startDate);
+  const pendingCritical = trip.checklist.filter(c => !c.done && c.critical).length;
+  const pendingSoon = trip.checklist.filter(c => !c.done && c.deadline).sort((a,b) => a.deadline.localeCompare(b.deadline)).slice(0,3);
+  const nextDays = trip.days.filter(d => d.date >= isoToday()).slice(0, 3);
+
+  const remaining = trip.budgetCeiling - spent;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Contagem" value={daysUntil > 0 ? `T-${daysUntil}` : (trip.endDate < isoToday() ? '—' : 'AGORA')} sub={daysUntil > 0 ? 'dias para embarcar' : trip.endDate < isoToday() ? 'concluída' : 'em curso'} tone={daysUntil <= 30 && daysUntil >= 0 ? 'accent' : 'ink'} accent={daysUntil <= 30 && daysUntil >= 0} />
+        <StatCard label="Gasto" value={fmtMoneyCompact(spent, trip.baseCurrency)} sub={trip.budgetCeiling ? `${pctSpent}% do teto` : 'sem teto'} tone={pctSpent > 100 ? 'bad' : pctSpent > 80 ? 'warn' : 'ink'} />
+        <StatCard label="Orçado" value={fmtMoneyCompact(budgetedTotal, trip.baseCurrency)} sub="soma das categorias" />
+        <StatCard label="Pendências" value={trip.checklist.filter(c => !c.done).length} sub={pendingCritical ? `${pendingCritical} críticas` : 'sem urgência'} tone={pendingCritical ? 'bad' : 'ok'} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 space-y-5">
+          {trip.budgetCeiling > 0 && (
+            <div className="card p-5 sm:p-6 fade-in-2">
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">Ledger · orçamento</div>
+                  <h3 className="font-bold text-2xl mt-0.5">Onde o dinheiro vai</h3>
+                </div>
+                <Button size="xs" onClick={() => onGo('budget')}>Detalhar →</Button>
+              </div>
+              <div className="flex items-end justify-between mb-2 gap-4">
+                <div>
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">Gasto</div>
+                  <div className="font-bold text-5xl leading-none num" style={{fontVariationSettings:"'opsz' 144, 'SOFT' 100"}}>{fmtMoney(spent, trip.baseCurrency, { digits: 0 })}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">Sobra</div>
+                  <div className={cx('font-bold text-2xl num', remaining < 0 ? 'text-bad' : 'text-ok')}>{fmtMoney(remaining, trip.baseCurrency, { digits: 0 })}</div>
+                  <div className="text-[10px] text-ink-3">de {fmtMoneyCompact(trip.budgetCeiling, trip.baseCurrency)}</div>
+                </div>
+              </div>
+              <div className="h-2 bg-paper relative overflow-hidden">
+                <div className="h-full transition-all" style={{width: `${Math.min(100, pctSpent)}%`, background: spent > trip.budgetCeiling ? 'var(--bad)' : spent > trip.budgetCeiling * 0.8 ? 'var(--warn)' : 'var(--ink)'}}></div>
+              </div>
+              <div className="mt-5 space-y-3">
+                {trip.categories.map(c => {
+                  const sp = spentByCategory(trip, c.id, fx);
+                  const b = Number(c.budgeted || 0);
+                  const over = b > 0 && sp > b;
+                  return (
+                    <div key={c.id}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="flex items-center gap-2"><span className="w-2 h-2 flex-shrink-0" style={{background: c.color, borderRadius: 1}} /><span className="text-ink">{c.name}</span></span>
+                        <span className="num font-mono text-ink-3"><span className={cx(over && 'text-bad font-semibold')}>{fmtMoneyCompact(sp, trip.baseCurrency)}</span>{b > 0 && <span className="text-ink-4"> / {fmtMoneyCompact(b, trip.baseCurrency)}</span>}</span>
+                      </div>
+                      {b > 0 && <Progress value={sp} max={b} color={over ? 'var(--bad)' : c.color} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="card p-5 sm:p-6 fade-in-3">
+            <div className="flex items-baseline justify-between mb-4">
+              <div>
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">Próximas paradas</div>
+                <h3 className="font-bold text-2xl mt-0.5">O que vem por aí</h3>
+              </div>
+              <Button size="xs" onClick={() => onGo('itinerary')}>Roteiro →</Button>
+            </div>
+            {nextDays.length === 0 ? <p className="text-sm text-ink-3 italic">Nada mais no roteiro.</p> : (
+              <div className="space-y-4">
+                {nextDays.map((d, idx) => (
+                  <div key={d.id} className="grid grid-cols-[64px_1fr] gap-3 pb-4 last:pb-0 border-b border-dashed border-rule-2 last:border-0">
+                    <div className="text-center">
+                      <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">{fmtDow(d.date)}</div>
+                      <div className="font-bold text-3xl leading-none text-ink" style={{fontVariationSettings:"'opsz' 144, 'SOFT' 100"}}>{fmtDate(d.date).split(' ')[0]}</div>
+                      <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4 mt-0.5">{fmtDate(d.date).split(' ')[1]}</div>
+                    </div>
+                    <div className="min-w-0">
+                      {d.title && <div className="text-base font-medium text-ink truncate">{d.title}</div>}
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-4 mt-0.5">{d.blocks.length} atv</div>
+                      {d.blocks.slice(0,2).map((b, i) => (
+                        <div key={b.id} className="text-xs text-ink-3 truncate mt-1 flex items-center gap-2">
+                          {b.time && <span className="text-ink-3">{b.time}</span>}
+                          <span>{b.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="card p-5 fade-in-2 border-ink" style={{boxShadow: '3px 3px 0 var(--accent-d)'}}>
+            <div className="flex items-baseline justify-between mb-3">
+              <div>
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">Prazos</div>
+                <h3 className="font-bold text-xl mt-0.5">Próximas ações</h3>
+              </div>
+              <Button size="xs" onClick={() => onGo('checklist')}>Todas</Button>
+            </div>
+            {pendingSoon.length === 0 ? <p className="text-xs text-ink-3 italic">Sem prazos definidos.</p> : (
+              <ul className="space-y-3">
+                {pendingSoon.map(it => (
+                  <li key={it.id} className="flex items-start gap-2.5">
+                    <span className={cx('mt-1.5 w-2 h-2 flex-shrink-0', it.critical ? 'bg-accent' : 'bg-warn')} style={{borderRadius: 1}} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-ink leading-snug">{it.text}</div>
+                      <div className="text-[10px] text-ink-4 font-mono mt-0.5">{fmtDate(it.deadline, { year: true })}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <WeatherCard trip={trip} />
+
+          <div className="card p-5 fade-in-3">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4">Live</div>
+                <h3 className="font-bold text-xl mt-0.5">Câmbio</h3>
+              </div>
+              <IconButton icon="refresh" onClick={fx.refresh} title="Atualizar" />
+            </div>
+            {!fx.rates ? <p className="text-xs text-ink-3">Sem cotação disponível.</p> : (
+              <>
+                <ul className="text-xs space-y-1.5 font-mono">
+                  {[trip.baseCurrency, ...trip.secondaryCurrencies].filter((c, i, a) => a.indexOf(c) === i).map(code => {
+                    if (code === trip.baseCurrency) return null;
+                    const r = fx.rates.rates[code];
+                    if (!r) return null;
+                    return (
+                      <li key={code} className="flex items-center justify-between border-b border-dashed border-rule-2 pb-1.5">
+                        <span className="text-ink-3">1 {trip.baseCurrency}</span>
+                        <span className="num text-ink font-semibold">{r.toFixed(4)} <span className="text-ink-4 font-normal">{code}</span></span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="text-[9px] text-ink-4 mt-3 font-semibold uppercase tracking-wider">{fx.rates.stale ? '⚠ cache · ' : ''}{new Date(fx.rates.ts).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+              </>
+            )}
+          </div>
+
+          {trip.notes && (
+            <div className="card p-5 fade-in-4">
+              <div className="text-[9px] font-semibold uppercase tracking-wider text-ink-4 mb-2">Diário</div>
+              <p className="text-sm text-ink-2 whitespace-pre-wrap leading-relaxed italic">"{trip.notes.slice(0, 200)}{trip.notes.length > 200 ? '…' : ''}"</p>
+              <Button size="xs" className="mt-3" onClick={() => onGo('notes')}>Editar</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeatherCard({ trip }) {
+  const [wx, setWx] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!trip.mapPoints || !trip.mapPoints.length) return;
+    const p = trip.mapPoints[0];
+    // Buscar clima só se viagem for nos próximos 16 dias (limite Open-Meteo)
+    const today = new Date().toISOString().slice(0,10);
+    const start = trip.startDate < today ? today : trip.startDate;
+    const daysAhead = daysBetween(today, start);
+    if (daysAhead > 16) return;
+    const end = trip.endDate < today ? today : trip.endDate;
+    setLoading(true);
+    fetchWeather(p.lat, p.lon, start, end.slice(0,10)).then(d => { setWx(d); setLoading(false); });
+  }, [trip.startDate, trip.endDate, trip.mapPoints]);
+
+  if (!trip.mapPoints || !trip.mapPoints.length) return null;
+  const daysAhead = daysBetween(isoToday(), trip.startDate);
+  if (daysAhead > 16) {
+    return (
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-ink mb-1">Clima</h3>
+        <p className="text-xs text-inkm">Previsão disponível 16 dias antes da viagem (faltam {daysAhead}).</p>
+      </div>
+    );
+  }
+  if (loading) return <div className="card p-5"><h3 className="text-sm font-semibold text-ink mb-1">Clima</h3><p className="text-xs text-inkm">Carregando…</p></div>;
+  if (!wx || !wx.daily) return null;
+
+  return (
+    <div className="card p-5">
+      <h3 className="text-sm font-semibold text-ink mb-2">Clima em {trip.mapPoints[0].name}</h3>
+      <div className="space-y-1.5">
+        {wx.daily.time.slice(0, 6).map((d, i) => (
+          <div key={d} className="flex items-center justify-between text-xs">
+            <span className="text-inkm">{fmtDate(d)}</span>
+            <span className="num">{Math.round(wx.daily.temperature_2m_min[i])}° / <span className="text-ink font-medium">{Math.round(wx.daily.temperature_2m_max[i])}°</span></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function computeSpent(trip, fx) {
+  let total = 0;
+  trip.days.forEach(d => d.blocks.forEach(b => {
+    if (b.cost != null) {
+      const cc = b.currency || trip.baseCurrency;
+      if (cc === trip.baseCurrency) total += Number(b.cost);
+      else if (fx?.rates) {
+        const conv = convert(Number(b.cost), cc, trip.baseCurrency, fx.rates);
+        if (conv != null) total += conv;
+      } else {
+        // fallback: soma sem converter (grosseiro)
+        total += Number(b.cost);
+      }
+    }
+  }));
+  return total;
+}
+
+function spentByCategory(trip, catId, fx) {
+  let total = 0;
+  trip.days.forEach(d => d.blocks.forEach(b => {
+    if (b.categoryId === catId && b.cost != null) {
+      const cc = b.currency || trip.baseCurrency;
+      if (cc === trip.baseCurrency) total += Number(b.cost);
+      else if (fx?.rates) {
+        const conv = convert(Number(b.cost), cc, trip.baseCurrency, fx.rates);
+        if (conv != null) total += conv;
+      } else total += Number(b.cost);
+    }
+  }));
+  return total;
+}
+
+/* ==================== BUDGET TAB ==================== */
+
+function BudgetTab({ trip, fx }) {
+  const { updateTrip } = useStore();
+  const [ceilingEdit, setCeilingEdit] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+
+  const budgetedTotal = trip.categories.reduce((s, c) => s + Number(c.budgeted || 0), 0);
+  const spent = computeSpent(trip, fx);
+
+  const addCategory = () => {
+    if (!newCatName.trim()) return;
+    updateTrip(trip.id, t => ({ ...t, categories: [...t.categories, makeCategory(newCatName.trim(), 0, CATEGORY_COLORS[t.categories.length % CATEGORY_COLORS.length])] }));
+    setNewCatName('');
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 card p-5">
+        <h3 className="text-sm font-semibold text-ink mb-4">Categorias</h3>
+        <div className="space-y-3">
+          {trip.categories.map(c => (
+            <CategoryRow key={c.id} trip={trip} category={c} spent={spentByCategory(trip, c.id, fx)} />
+          ))}
+        </div>
+        <div className="hairline mt-4 pt-4 flex items-center gap-2">
+          <TextInput placeholder="Nova categoria…" value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addCategory(); }} />
+          <Button icon="plus" size="sm" onClick={addCategory}>Adicionar</Button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs uppercase tracking-wider text-inkm">Teto</div>
+            <IconButton icon="edit" onClick={() => setCeilingEdit(true)} />
+          </div>
+          <div className="text-2xl font-serif italic num">{fmtMoney(trip.budgetCeiling, trip.baseCurrency, { digits: 0 })}</div>
+          <div className="hairline my-3 pt-3">
+            <div className="flex justify-between text-xs mb-1"><span className="text-inkm">Orçado</span><span className="num">{fmtMoney(budgetedTotal, trip.baseCurrency, { digits: 0 })}</span></div>
+            <div className="flex justify-between text-xs mb-1"><span className="text-inkm">Gasto</span><span className="num">{fmtMoney(spent, trip.baseCurrency, { digits: 0 })}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-inkm">Sobra</span><span className={cx('num font-semibold', trip.budgetCeiling - spent < 0 ? 'text-bad' : 'text-ok')}>{fmtMoney(trip.budgetCeiling - spent, trip.baseCurrency, { digits: 0 })}</span></div>
+          </div>
+        </div>
+
+        {trip.budgetCeiling > 0 && <DonutChart data={trip.categories.map(c => ({ label: c.name, value: spentByCategory(trip, c.id, fx), color: c.color }))} title="Distribuição dos gastos" />}
+      </div>
+
+      {ceilingEdit && <CeilingEditModal trip={trip} onClose={() => setCeilingEdit(false)} />}
+    </div>
+  );
+}
+
+function CategoryRow({ trip, category, spent }) {
+  const { updateTrip } = useStore();
+  const [edit, setEdit] = useState(false);
+  const b = Number(category.budgeted || 0);
+  const p = b > 0 ? (spent / b) * 100 : 0;
+  const overBudget = p > 100;
+
+  return (
+    <div className="group">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: category.color }} />
+          <span className="text-sm text-ink truncate">{category.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={cx('num text-sm', overBudget && 'text-bad')}>{fmtMoney(spent, trip.baseCurrency)}</span>
+          {b > 0 && <span className="text-xs text-inks num">/ {fmtMoney(b, trip.baseCurrency)}</span>}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+            <IconButton icon="edit" onClick={() => setEdit(true)} />
+            <IconButton icon="trash" onClick={() => {
+              if (confirm(`Remover categoria "${category.name}"? Blocos vinculados ficam sem categoria.`)) {
+                updateTrip(trip.id, t => ({ ...t,
+                  categories: t.categories.filter(x => x.id !== category.id),
+                  days: t.days.map(d => ({ ...d, blocks: d.blocks.map(bl => bl.categoryId === category.id ? { ...bl, categoryId: null } : bl) }))
+                }));
+              }
+            }} />
+          </div>
+        </div>
+      </div>
+      {b > 0 && <Progress value={spent} max={b} color={overBudget ? '#991B1B' : category.color} />}
+      {edit && <CategoryEditModal trip={trip} category={category} onClose={() => setEdit(false)} />}
+    </div>
+  );
+}
+
+function CategoryEditModal({ trip, category, onClose }) {
+  const { updateTrip } = useStore();
+  const [f, setF] = useState(category);
+  const save = () => {
+    updateTrip(trip.id, t => ({ ...t, categories: t.categories.map(c => c.id === category.id ? { ...c, name: f.name, budgeted: Number(f.budgeted) || 0, color: f.color } : c) }));
+    onClose();
+  };
+  return (
+    <Modal open onClose={onClose} title="Editar categoria" size="sm"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save}>Salvar</Button></>}>
+      <div className="space-y-3">
+        <div><Label>Nome</Label><TextInput value={f.name} onChange={e => setF({...f, name: e.target.value})} /></div>
+        <div><Label>Valor orçado ({trip.baseCurrency})</Label><NumberInput value={f.budgeted} onChange={e => setF({...f, budgeted: e.target.value})} /></div>
+        <div><Label>Cor</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORY_COLORS.map(c => (
+              <button key={c} onClick={() => setF({...f, color: c})} className={cx('w-7 h-7 rounded-full border-2 transition', f.color === c ? 'border-ink scale-110' : 'border-white')} style={{ background: c }} />
+            ))}
+            <input type="color" value={f.color} onChange={e => setF({...f, color: e.target.value})} className="w-7 h-7 rounded-full border border-line cursor-pointer" />
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function CeilingEditModal({ trip, onClose }) {
+  const { updateTrip } = useStore();
+  const [v, setV] = useState(trip.budgetCeiling);
+  return (
+    <Modal open onClose={onClose} title="Teto de orçamento" size="sm"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={() => { updateTrip(trip.id, t => ({ ...t, budgetCeiling: Number(v) || 0 })); onClose(); }}>Salvar</Button></>}>
+      <div><Label>Valor máximo ({trip.baseCurrency})</Label><NumberInput value={v} onChange={e => setV(e.target.value)} autoFocus /></div>
+    </Modal>
+  );
+}
+
+function DonutChart({ data, title }) {
+  const total = data.reduce((s, d) => s + Math.max(0, d.value), 0);
+  const size = 160; const stroke = 24; const r = (size - stroke) / 2; const cx = size / 2; const cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <div className="card p-5">
+      <h3 className="text-sm font-semibold text-ink mb-3">{title}</h3>
+      {total === 0 ? <p className="text-xs text-inkm">Sem gastos registrados ainda.</p> : (
+        <div className="flex items-center gap-4">
+          <svg width={size} height={size} className="flex-shrink-0">
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F5F5F4" strokeWidth={stroke} />
+            {data.map((d, i) => {
+              if (d.value <= 0) return null;
+              const frac = d.value / total;
+              const len = frac * circ;
+              const el = <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.color} strokeWidth={stroke} strokeDasharray={`${len} ${circ - len}`} strokeDashoffset={-offset} transform={`rotate(-90 ${cx} ${cy})`} />;
+              offset += len;
+              return el;
+            })}
+            <text x={cx} y={cy - 4} textAnchor="middle" className="fill-inkm text-[10px] uppercase tracking-wider">Total</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" className="fill-ink font-semibold text-sm num">{fmtMoneyCompact(total)}</text>
+          </svg>
+          <ul className="text-xs space-y-1 flex-1 min-w-0">
+            {data.filter(d => d.value > 0).sort((a,b) => b.value - a.value).slice(0, 8).map((d, i) => (
+              <li key={i} className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 min-w-0"><span className="w-2 h-2 rounded-full flex-shrink-0" style={{background: d.color}} /><span className="truncate">{d.label}</span></span>
+                <span className="num text-inkm">{Math.round((d.value/total)*100)}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ==================== ITINERARY TAB ==================== */
+
+function ItineraryTab({ trip, fx }) {
+  const { updateTrip } = useStore();
+  const [expanded, setExpanded] = useState(() => new Set(trip.days.slice(0, 3).map(d => d.id)));
+  const [addingDay, setAddingDay] = useState(false);
+
+  const toggle = (id) => setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const expandAll = () => setExpanded(new Set(trip.days.map(d => d.id)));
+  const collapseAll = () => setExpanded(new Set());
+
+  const sortedDays = trip.days.slice().sort((a,b) => a.date.localeCompare(b.date));
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Módulo · Roteiro"
+        title="Dia a dia"
+        action={
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button size="xs" onClick={expandAll}>Expandir tudo</Button>
+            <Button size="xs" onClick={collapseAll}>Recolher</Button>
+            <Button size="sm" variant="primary" icon="plus" onClick={() => setAddingDay(true)}>Novo dia</Button>
+          </div>
+        }
+      />
+
+      {trip.days.length === 0 ? (
+        <EmptyState icon="calendar" title="Roteiro vazio" description="Comece adicionando o primeiro dia da viagem." action={<Button variant="primary" icon="plus" onClick={() => setAddingDay(true)}>Adicionar dia</Button>} />
+      ) : (
+        <div className="space-y-2 relative">
+          {sortedDays.map((d, i) => (
+            <DayCard key={d.id} trip={trip} day={d} idx={i} expanded={expanded.has(d.id)} onToggle={() => toggle(d.id)} fx={fx} />
+          ))}
+        </div>
+      )}
+
+      {addingDay && <AddDayModal trip={trip} onClose={() => setAddingDay(false)} />}
+    </div>
+  );
+}
+
+function AddDayModal({ trip, onClose }) {
+  const { updateTrip } = useStore();
+  const last = trip.days.length ? trip.days[trip.days.length - 1].date : trip.endDate;
+  const [date, setDate] = useState(isoAddDays(last, 1));
+  const [title, setTitle] = useState('');
+  return (
+    <Modal open onClose={onClose} title="Adicionar dia" size="sm"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={() => { updateTrip(trip.id, t => ({ ...t, days: [...t.days, makeDay(date, title)].sort((a,b) => a.date.localeCompare(b.date)) })); onClose(); }}>Adicionar</Button></>}>
+      <div className="space-y-3">
+        <div><Label>Data</Label><TextInput type="date" value={date} onChange={e => setDate(e.target.value)} autoFocus /></div>
+        <div><Label>Título (opcional)</Label><TextInput value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Chegada em Punta" /></div>
+      </div>
+    </Modal>
+  );
+}
+
+function DayCard({ trip, day, idx, expanded, onToggle, fx }) {
+  const { updateTrip } = useStore();
+  const [addingBlock, setAddingBlock] = useState(false);
+  const [editingDay, setEditingDay] = useState(false);
+  const dayCost = day.blocks.reduce((s, b) => {
+    if (b.cost == null) return s;
+    const cc = b.currency || trip.baseCurrency;
+    if (cc === trip.baseCurrency) return s + Number(b.cost);
+    if (fx?.rates) { const v = convert(Number(b.cost), cc, trip.baseCurrency, fx.rates); return s + (v || 0); }
+    return s + Number(b.cost);
+  }, 0);
+  const doneCount = day.blocks.filter(b => b.done).length;
+
+  const removeDay = () => {
+    if (confirm(`Remover ${fmtDate(day.date)}? Isso apaga os ${day.blocks.length} bloco(s).`)) {
+      updateTrip(trip.id, t => ({ ...t, days: t.days.filter(d => d.id !== day.id) }));
+    }
+  };
+
+  const allDone = day.blocks.length > 0 && doneCount === day.blocks.length;
+  const monthAbbr = fmtDate(day.date).split(' ')[1];
+  const dayNum = fmtDate(day.date).split(' ')[0];
+
+  return (
+    <article className={cx('card overflow-hidden print-block transition-shadow', expanded && 'card-elevated')}>
+      <button onClick={onToggle} className="w-full text-left p-4 sm:p-5 hover:bg-paper-2 transition-colors flex items-center gap-4">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center flex-shrink-0" style={{background: allDone ? 'var(--okbg)' : 'var(--paper-2)', color: allDone ? 'var(--ok)' : 'var(--ink)'}}>
+          <div className="text-2xl sm:text-3xl font-bold leading-none">{dayNum}</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wider mt-0.5">{monthAbbr}</div>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] uppercase tracking-wider text-ink-3 font-semibold">{fmtDow(day.date)} · Dia {idx + 1}</span>
+            {allDone && <span className="chip chip-ok text-[10px]">Completo</span>}
+          </div>
+          {day.title ? <h3 className="text-lg sm:text-xl font-bold text-ink leading-tight">{day.title}</h3> : <h3 className="text-base text-ink-3">Sem título</h3>}
+          <div className="mt-1 flex items-center gap-3 text-xs text-ink-3 flex-wrap">
+            {day.blocks.length > 0 && <span>{day.blocks.length} {day.blocks.length === 1 ? 'atividade' : 'atividades'}</span>}
+            {day.blocks.length > 0 && <span>{doneCount}/{day.blocks.length} concluídas</span>}
+            {dayCost > 0 && <span className="font-semibold text-ink">{fmtMoneyCompact(dayCost, trip.baseCurrency)}</span>}
+          </div>
+          {!expanded && day.blocks[0] && (
+            <div className="text-xs text-ink-3 truncate mt-2">→ {day.blocks[0].time && `${day.blocks[0].time}  `}{day.blocks[0].title}</div>
+          )}
+        </div>
+
+        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-paper-2">
+          <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} className="text-ink-2" />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-4 sm:px-5 pb-5 border-t border-rule pt-4 fade-in">
+          <div className="flex items-center gap-2 mb-4">
+            <Button size="xs" icon="edit" onClick={() => setEditingDay(true)}>Editar dia</Button>
+            <Button size="xs" icon="plus" variant="primary" onClick={() => setAddingBlock(true)}>Adicionar bloco</Button>
+            <span className="flex-1"></span>
+            <Button size="xs" icon="trash" variant="danger" onClick={removeDay}>Remover dia</Button>
+          </div>
+          {day.blocks.length === 0 ? (
+            <div className="border border-dashed border-rule-2 p-8 text-center text-sm text-ink-3 rounded-xl">
+              Nada planejado ainda.<br/>Adicione o primeiro bloco desse dia.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {day.blocks.map((b, i) => (
+                <BlockRow key={b.id} trip={trip} day={day} block={b} idx={i} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {addingBlock && <BlockModal trip={trip} day={day} onClose={() => setAddingBlock(false)} />}
+      {editingDay && <DayEditModal trip={trip} day={day} onClose={() => setEditingDay(false)} />}
+    </article>
+  );
+}
+
+function DayEditModal({ trip, day, onClose }) {
+  const { updateTrip } = useStore();
+  const [f, setF] = useState(day);
+  return (
+    <Modal open onClose={onClose} title="Editar dia" size="sm"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={() => { updateTrip(trip.id, t => ({ ...t, days: t.days.map(d => d.id === day.id ? { ...d, date: f.date, title: f.title, notes: f.notes } : d).sort((a,b) => a.date.localeCompare(b.date)) })); onClose(); }}>Salvar</Button></>}>
+      <div className="space-y-3">
+        <div><Label>Data</Label><TextInput type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} /></div>
+        <div><Label>Título</Label><TextInput value={f.title} onChange={e => setF({...f, title: e.target.value})} /></div>
+        <div><Label>Notas do dia</Label><TextArea rows={3} value={f.notes} onChange={e => setF({...f, notes: e.target.value})} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+function BlockRow({ trip, day, block, idx }) {
+  const { updateTrip } = useStore();
+  const [editing, setEditing] = useState(false);
+  const cat = trip.categories.find(c => c.id === block.categoryId);
+  const traveler = trip.travelers.find(t => t.id === block.paidBy);
+  const currency = block.currency || trip.baseCurrency;
+
+  const toggleDone = () => updateTrip(trip.id, t => ({ ...t, days: t.days.map(d => d.id === day.id ? { ...d, blocks: d.blocks.map(b => b.id === block.id ? { ...b, done: !b.done } : b) } : d) }));
+  const remove = () => updateTrip(trip.id, t => ({ ...t, days: t.days.map(d => d.id === day.id ? { ...d, blocks: d.blocks.filter(b => b.id !== block.id) } : d) }));
+
+  return (
+    <div className={cx('flex items-start gap-3 p-3 border group transition-all', block.done ? 'opacity-55 bg-paper/60 border-rule' : 'bg-paperx border-rule hover:border-ink')} style={{borderRadius: 2}}>
+      <button onClick={toggleDone} className={cx('w-5 h-5 mt-0.5 border-2 flex-shrink-0 flex items-center justify-center transition-colors', block.done ? 'bg-ink border-ink text-paper' : 'border-rule-2 hover:border-ink bg-paperx')} style={{borderRadius: 2}}>
+        {block.done && <Icon name="check" size={12} strokeWidth={3} />}
+      </button>
+      <div className="w-14 flex-shrink-0 text-right pt-0.5">
+        {block.time ? <div className="text-xs font-mono font-medium text-ink">{block.time}</div> : <div className="text-[10px] text-ink-3">—:—</div>}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={cx('text-sm text-ink font-medium leading-snug', block.done && 'line-through')}>{block.title || <em className="text-ink-4">sem título</em>}</div>
+        {(block.location || block.link) && (
+          <div className="text-xs text-ink-3 mt-1 flex items-center gap-3 flex-wrap">
+            {block.location && <span className="flex items-center gap-1"><Icon name="mapPin" size={10} className="text-accent" /> {block.location}</span>}
+            {block.link && <a href={block.link} target="_blank" rel="noreferrer" className="text-accent-d hover:underline flex items-center gap-1" onClick={e => e.stopPropagation()}><Icon name="external" size={10} /> link</a>}
+          </div>
+        )}
+        {block.notes && <div className="text-xs text-ink-3 mt-1 whitespace-pre-wrap italic">{block.notes}</div>}
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {cat && <span className="chip" style={{ borderColor: cat.color, color: cat.color, background: cat.color + '11' }}>{cat.name}</span>}
+          {traveler && <span className="chip" style={{ borderColor: traveler.color, color: traveler.color }}>{traveler.name}</span>}
+        </div>
+      </div>
+      <div className="flex-shrink-0 text-right">
+        {block.cost != null && <div className="text-sm font-mono font-semibold text-ink num">{fmtMoney(block.cost, currency)}</div>}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 flex items-center justify-end">
+          <IconButton icon="edit" onClick={() => setEditing(true)} />
+          <IconButton icon="trash" onClick={remove} />
+        </div>
+      </div>
+
+      {editing && <BlockModal trip={trip} day={day} block={block} onClose={() => setEditing(false)} />}
+    </div>
+  );
+}
+
+function BlockModal({ trip, day, block, onClose }) {
+  const { updateTrip } = useStore();
+  const isNew = !block;
+  const [f, setF] = useState(() => block ? { ...block } : makeBlock({ currency: trip.baseCurrency }));
+  useEffect(() => { if (isNew && !f.currency) setF(v => ({ ...v, currency: trip.baseCurrency })); }, []);
+
+  const save = () => {
+    const b = makeBlock({ ...f, cost: f.cost === '' || f.cost == null ? null : Number(f.cost) });
+    b.id = block?.id || uid('b_');
+    updateTrip(trip.id, t => ({ ...t,
+      days: t.days.map(d => d.id !== day.id ? d : {
+        ...d,
+        blocks: block ? d.blocks.map(x => x.id === block.id ? b : x) : [...d.blocks, b]
+      }),
+    }));
+    onClose();
+  };
+
+  return (
+    <Modal open onClose={onClose} title={isNew ? 'Nova atividade' : 'Editar atividade'} size="lg"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save} disabled={!f.title?.trim()}>Salvar</Button></>}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2"><Label>Título</Label><TextInput value={f.title} onChange={e => setF({...f, title: e.target.value})} placeholder="Ex: Almoço no Mercado del Puerto" autoFocus /></div>
+        <div><Label>Hora</Label><TextInput type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} /></div>
+        <div><Label>Local</Label><TextInput value={f.location} onChange={e => setF({...f, location: e.target.value})} placeholder="Endereço, bairro ou ponto" /></div>
+        <div><Label>Custo</Label><NumberInput value={f.cost ?? ''} onChange={e => setF({...f, cost: e.target.value})} placeholder="0.00" /></div>
+        <div><Label>Moeda</Label>
+          <Select value={f.currency || trip.baseCurrency} onChange={e => setF({...f, currency: e.target.value})}>
+            {[trip.baseCurrency, ...trip.secondaryCurrencies].filter((c,i,a) => a.indexOf(c) === i).map(c => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </div>
+        <div><Label>Categoria</Label>
+          <Select value={f.categoryId || ''} onChange={e => setF({...f, categoryId: e.target.value || null})}>
+            <option value="">— nenhuma —</option>
+            {trip.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+        </div>
+        {trip.travelers.length > 0 && (
+          <div><Label>Quem pagou</Label>
+            <Select value={f.paidBy || ''} onChange={e => setF({...f, paidBy: e.target.value || null})}>
+              <option value="">— não especificado —</option>
+              {trip.travelers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </Select>
+          </div>
+        )}
+        {trip.travelers.length > 1 && (
+          <div className="sm:col-span-2">
+            <Label hint="marcar quem participa da divisão">Dividir entre</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {trip.travelers.map(t => {
+                const arr = f.splitBetween || trip.travelers.map(x => x.id);
+                const on = arr.includes(t.id);
+                return (
+                  <button key={t.id} type="button" onClick={() => {
+                    const cur = f.splitBetween || trip.travelers.map(x => x.id);
+                    const next = on ? cur.filter(x => x !== t.id) : [...cur, t.id];
+                    setF({ ...f, splitBetween: next });
+                  }} className={cx('chip', on ? 'chip-ink' : '')}>
+                    {t.name || 'sem nome'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div className="sm:col-span-2"><Label>Link</Label><TextInput value={f.link} onChange={e => setF({...f, link: e.target.value})} placeholder="https://…" /></div>
+        <div className="sm:col-span-2"><Label>Notas</Label><TextArea rows={2} value={f.notes} onChange={e => setF({...f, notes: e.target.value})} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ==================== CHECKLIST TAB ==================== */
+
+function ChecklistTab({ trip }) {
+  const { updateTrip } = useStore();
+  const [addingPhase, setAddingPhase] = useState(null);
+  const [newText, setNewText] = useState('');
+
+  const byPhase = CHECKLIST_PHASES.map(p => ({ ...p, items: trip.checklist.filter(i => i.phase === p.id) }));
+
+  const add = (phase) => {
+    if (!newText.trim()) return;
+    updateTrip(trip.id, t => ({ ...t, checklist: [...t.checklist, makeChecklistItem(newText.trim(), phase)] }));
+    setNewText(''); setAddingPhase(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      {byPhase.map(phase => (
+        <div key={phase.id} className="card p-5 print-block">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-ink">{phase.name}</h3>
+            <div className="flex items-center gap-2 text-xs text-inkm">
+              <span>{phase.items.filter(i => i.done).length}/{phase.items.length}</span>
+              <Button size="xs" icon="plus" onClick={() => setAddingPhase(phase.id)}>Item</Button>
+            </div>
+          </div>
+          {phase.items.length === 0 && addingPhase !== phase.id && <p className="text-xs text-inkm">Sem itens.</p>}
+          <div className="space-y-1.5">
+            {phase.items.map(it => <ChecklistItemRow key={it.id} trip={trip} item={it} />)}
+            {addingPhase === phase.id && (
+              <div className="flex items-center gap-2 pt-1">
+                <TextInput value={newText} onChange={e => setNewText(e.target.value)} placeholder="Novo item…" onKeyDown={e => { if (e.key === 'Enter') add(phase.id); if (e.key === 'Escape') { setAddingPhase(null); setNewText(''); } }} autoFocus />
+                <Button size="sm" variant="primary" onClick={() => add(phase.id)}>Adicionar</Button>
+                <Button size="sm" onClick={() => { setAddingPhase(null); setNewText(''); }}>Cancelar</Button>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChecklistItemRow({ trip, item }) {
+  const { updateTrip } = useStore();
+  const [editing, setEditing] = useState(false);
+  const toggle = () => updateTrip(trip.id, t => ({ ...t, checklist: t.checklist.map(x => x.id === item.id ? { ...x, done: !x.done } : x) }));
+  const remove = () => updateTrip(trip.id, t => ({ ...t, checklist: t.checklist.filter(x => x.id !== item.id) }));
+  const daysLeft = item.deadline ? daysBetween(isoToday(), item.deadline) : null;
+  const overdue = daysLeft != null && daysLeft < 0 && !item.done;
+  const soon = daysLeft != null && daysLeft >= 0 && daysLeft <= 14 && !item.done;
+
+  return (
+    <div className="group flex items-start gap-2 py-1">
+      <button onClick={toggle} className={cx('mt-1 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center', item.done ? 'bg-ink border-ink text-white' : item.critical ? 'border-bad' : 'border-lineh hover:border-ink')}>
+        {item.done && <Icon name="check" size={11} strokeWidth={3} />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className={cx('text-sm', item.done && 'line-through text-inkm')}>
+          {item.critical && !item.done && <span className="text-bad mr-1">★</span>}
+          {item.text}
+        </div>
+        {(item.deadline || item.notes) && (
+          <div className="text-xs text-inkm mt-0.5 flex items-center gap-2 flex-wrap">
+            {item.deadline && (
+              <span className={cx('flex items-center gap-1', overdue && 'text-bad', soon && 'text-warn')}>
+                <Icon name="clock" size={10} />
+                {fmtDate(item.deadline, { year: true })}
+                {daysLeft != null && !item.done && ` (${daysLeft >= 0 ? `${daysLeft}d` : `${-daysLeft}d atrás`})`}
+              </span>
+            )}
+            {item.notes && <span className="italic">— {item.notes}</span>}
+          </div>
+        )}
+      </div>
+      <div className="opacity-0 group-hover:opacity-100 flex items-center flex-shrink-0">
+        <IconButton icon="edit" onClick={() => setEditing(true)} />
+        <IconButton icon="trash" onClick={remove} />
+      </div>
+      {editing && <ChecklistEditModal trip={trip} item={item} onClose={() => setEditing(false)} />}
+    </div>
+  );
+}
+
+function ChecklistEditModal({ trip, item, onClose }) {
+  const { updateTrip } = useStore();
+  const [f, setF] = useState({ ...item, deadline: item.deadline || '' });
+  const save = () => {
+    updateTrip(trip.id, t => ({ ...t, checklist: t.checklist.map(x => x.id === item.id ? { ...x, text: f.text, phase: f.phase, deadline: f.deadline || null, critical: !!f.critical, notes: f.notes } : x) }));
+    onClose();
+  };
+  return (
+    <Modal open onClose={onClose} title="Editar item" size="sm"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save}>Salvar</Button></>}>
+      <div className="space-y-3">
+        <div><Label>Texto</Label><TextInput value={f.text} onChange={e => setF({...f, text: e.target.value})} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>Fase</Label>
+            <Select value={f.phase} onChange={e => setF({...f, phase: e.target.value})}>
+              {CHECKLIST_PHASES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+          </div>
+          <div><Label>Prazo (opcional)</Label><TextInput type="date" value={f.deadline} onChange={e => setF({...f, deadline: e.target.value})} /></div>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!!f.critical} onChange={e => setF({...f, critical: e.target.checked})} />
+          Item crítico
+        </label>
+        <div><Label>Notas</Label><TextArea rows={2} value={f.notes} onChange={e => setF({...f, notes: e.target.value})} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ==================== MAP TAB ==================== */
+
+function MapTab({ trip }) {
+  const { updateTrip } = useStore();
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markersLayer = useRef(null);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (!window.L || !mapRef.current || mapInstance.current) return;
+    const map = window.L.map(mapRef.current, { zoomControl: true, attributionControl: false }).setView([-15, -55], 3);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd', maxZoom: 19,
+    }).addTo(map);
+    window.L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap · Carto').addTo(map);
+    mapInstance.current = map;
+    markersLayer.current = window.L.layerGroup().addTo(map);
+    return () => { map.remove(); mapInstance.current = null; };
+  }, []);
+
+  useEffect(() => {
+    if (!mapInstance.current || !markersLayer.current) return;
+    markersLayer.current.clearLayers();
+    const pts = trip.mapPoints || [];
+    if (pts.length === 0) return;
+    pts.forEach((p, i) => {
+      const icon = window.L.divIcon({ className: '', html: `<div class="tp-marker">${i + 1}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+      const m = window.L.marker([p.lat, p.lon], { icon }).addTo(markersLayer.current);
+      m.bindPopup(`<div style="font-family:Inter,sans-serif"><div style="font-weight:600;font-size:13px">${p.name}</div>${p.note ? `<div style="font-size:11px;color:#525252;margin-top:2px">${p.note}</div>` : ''}</div>`);
+    });
+    if (pts.length > 1) {
+      const poly = window.L.polyline(pts.map(p => [p.lat, p.lon]), { color: '#0A0A0A', weight: 2, dashArray: '4 4', opacity: 0.5 }).addTo(markersLayer.current);
+      mapInstance.current.fitBounds(poly.getBounds(), { padding: [40, 40] });
+    } else {
+      mapInstance.current.setView([pts[0].lat, pts[0].lon], 10);
+    }
+  }, [trip.mapPoints]);
+
+  const removePoint = (id) => updateTrip(trip.id, t => ({ ...t, mapPoints: t.mapPoints.filter(p => p.id !== id) }));
+  const movePoint = (id, dir) => updateTrip(trip.id, t => {
+    const idx = t.mapPoints.findIndex(p => p.id === id);
+    if (idx < 0) return t;
+    const to = idx + dir;
+    if (to < 0 || to >= t.mapPoints.length) return t;
+    const arr = [...t.mapPoints]; [arr[idx], arr[to]] = [arr[to], arr[idx]];
+    return { ...t, mapPoints: arr };
+  });
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="lg:col-span-3">
+        <div ref={mapRef} className="rounded-lg border border-line" style={{ height: 480 }}></div>
+      </div>
+      <div className="lg:col-span-2 card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-ink">Pontos ({trip.mapPoints.length})</h3>
+          <Button size="sm" icon="plus" onClick={() => setAdding(true)}>Adicionar</Button>
+        </div>
+        {trip.mapPoints.length === 0 ? (
+          <p className="text-xs text-inkm">Adicione destinos, pernoites ou atividades para desenhar a rota.</p>
+        ) : (
+          <ol className="space-y-2">
+            {trip.mapPoints.map((p, i) => (
+              <li key={p.id} className="flex items-start gap-2 group">
+                <div className="w-6 h-6 rounded-full bg-ink text-white flex items-center justify-center text-[11px] font-semibold flex-shrink-0">{i + 1}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-ink truncate">{p.name}</div>
+                  {p.note && <div className="text-xs text-inkm truncate">{p.note}</div>}
+                  <div className="text-[10px] text-inks num mt-0.5">{p.lat.toFixed(3)}, {p.lon.toFixed(3)}</div>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 flex flex-col">
+                  <IconButton icon="chevronUp" onClick={() => movePoint(p.id, -1)} />
+                  <IconButton icon="chevronDown" onClick={() => movePoint(p.id, 1)} />
+                </div>
+                <IconButton icon="trash" onClick={() => removePoint(p.id)} />
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
+      {adding && <AddPointModal trip={trip} onClose={() => setAdding(false)} />}
+    </div>
+  );
+}
+
+function AddPointModal({ trip, onClose }) {
+  const { updateTrip } = useStore();
+  const [q, setQ] = useState('');
+  const [note, setNote] = useState('');
+  const [manual, setManual] = useState(false);
+  const [lat, setLat] = useState(''); const [lon, setLon] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState('');
+
+  const doSearch = async () => {
+    if (!q.trim()) return;
+    setSearching(true); setError('');
+    const r = await geocode(q.trim());
+    setSearching(false);
+    if (!r) { setError('Não encontrei essa localização. Tente ser mais específico ou insira as coordenadas manualmente.'); return; }
+    updateTrip(trip.id, t => ({ ...t, mapPoints: [...t.mapPoints, { id: uid('m_'), name: q.trim(), lat: r.lat, lon: r.lon, note, kind: 'point' }] }));
+    onClose();
+  };
+  const doManual = () => {
+    const la = parseFloat(lat), lo = parseFloat(lon);
+    if (isNaN(la) || isNaN(lo)) { setError('Coordenadas inválidas.'); return; }
+    updateTrip(trip.id, t => ({ ...t, mapPoints: [...t.mapPoints, { id: uid('m_'), name: q.trim() || 'Ponto', lat: la, lon: lo, note, kind: 'point' }] }));
+    onClose();
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Adicionar ponto no mapa" size="sm"
+      footer={
+        <>
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={manual ? doManual : doSearch} disabled={searching || (!manual && !q.trim())}>{searching ? 'Buscando…' : 'Adicionar'}</Button>
+        </>
+      }>
+      <div className="space-y-3">
+        <div><Label>Nome / busca</Label><TextInput value={q} onChange={e => setQ(e.target.value)} placeholder="Ex: Punta del Este" autoFocus /></div>
+        <div><Label>Nota (opcional)</Label><TextInput value={note} onChange={e => setNote(e.target.value)} placeholder="Ex: Pernoite 4 noites" /></div>
+        <label className="flex items-center gap-2 text-sm text-inkm">
+          <input type="checkbox" checked={manual} onChange={e => setManual(e.target.checked)} />
+          Inserir coordenadas manualmente
+        </label>
+        {manual && (
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label>Latitude</Label><NumberInput value={lat} onChange={e => setLat(e.target.value)} placeholder="-34.96" /></div>
+            <div><Label>Longitude</Label><NumberInput value={lon} onChange={e => setLon(e.target.value)} placeholder="-54.94" /></div>
+          </div>
+        )}
+        {error && <div className="text-xs text-bad">{error}</div>}
+        <div className="text-[11px] text-inks">Usa OpenStreetMap para geocodificação. Precisa de internet.</div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ==================== QUOTES TAB ==================== */
+
+function QuotesTab({ trip, fx }) {
+  const { updateTrip } = useStore();
+  const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState('all');
+
+  const filtered = filter === 'all' ? trip.quotes : trip.quotes.filter(q => q.type === filter);
+  const grouped = BOOKING_TYPES.map(bt => ({ ...bt, items: trip.quotes.filter(q => q.type === bt.id) })).filter(g => g.items.length > 0);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+        <div className="flex items-center gap-1 flex-wrap">
+          <button onClick={() => setFilter('all')} className={cx('chip', filter === 'all' ? 'chip-ink' : '')}>Todas ({trip.quotes.length})</button>
+          {BOOKING_TYPES.map(bt => {
+            const n = trip.quotes.filter(q => q.type === bt.id).length;
+            if (n === 0) return null;
+            return <button key={bt.id} onClick={() => setFilter(bt.id)} className={cx('chip', filter === bt.id ? 'chip-ink' : '')}>{bt.name} ({n})</button>;
+          })}
+        </div>
+        <Button size="sm" variant="primary" icon="plus" onClick={() => setAdding(true)}>Nova cotação</Button>
+      </div>
+
+      {trip.quotes.length === 0 && (
+        <EmptyState icon="quote" title="Nenhuma cotação ainda" description="Registre preços que encontrar (voo, hotel, carro…) e a ferramenta compara com as suas faixas de referência." action={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Adicionar cotação</Button>} />
+      )}
+
+      <div className="space-y-3">
+        {(filter === 'all' ? grouped : grouped.filter(g => g.id === filter)).map(g => (
+          <div key={g.id}>
+            <div className="text-[11px] uppercase tracking-widest text-inkm mb-2">{g.name}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {g.items.map(q => <QuoteCard key={q.id} trip={trip} quote={q} fx={fx} />)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {adding && <QuoteModal trip={trip} onClose={() => setAdding(false)} />}
+    </div>
+  );
+}
+
+function QuoteCard({ trip, quote, fx }) {
+  const [editing, setEditing] = useState(false);
+  const { updateTrip } = useStore();
+  const remove = () => updateTrip(trip.id, t => ({ ...t, quotes: t.quotes.filter(q => q.id !== quote.id) }));
+
+  const currency = quote.currency || trip.baseCurrency;
+  const priceInBase = quote.price != null ? (currency === trip.baseCurrency ? quote.price : (fx?.rates ? convert(quote.price, currency, trip.baseCurrency, fx.rates) : null)) : null;
+
+  let verdict = null;
+  if (priceInBase != null && quote.benchmarkGood != null) {
+    if (priceInBase <= quote.benchmarkGood) verdict = { text: 'oferta boa', cls: 'chip-ok' };
+    else if (priceInBase <= (quote.benchmarkOk ?? quote.benchmarkGood * 1.2)) verdict = { text: 'na média', cls: 'chip-warn' };
+    else if (priceInBase <= (quote.benchmarkBad ?? Number.MAX_SAFE_INTEGER)) verdict = { text: 'salgado', cls: 'chip-bad' };
+    else verdict = { text: 'muito caro', cls: 'chip-bad' };
+  }
+
+  return (
+    <div className="card p-4 group">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium text-ink truncate">{quote.provider || 'Sem provedor'}</div>
+          {quote.notes && <div className="text-xs text-inkm mt-0.5 line-clamp-2">{quote.notes}</div>}
+        </div>
+        <div className="opacity-0 group-hover:opacity-100 flex items-center flex-shrink-0">
+          <IconButton icon="edit" onClick={() => setEditing(true)} />
+          <IconButton icon="trash" onClick={remove} />
+        </div>
+      </div>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className="text-lg font-semibold num">{quote.price != null ? fmtMoney(quote.price, currency) : <span className="text-inks italic">sem preço</span>}</div>
+          {priceInBase != null && currency !== trip.baseCurrency && <div className="text-[11px] text-inkm num">≈ {fmtMoney(priceInBase, trip.baseCurrency)}</div>}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {verdict && <span className={cx('chip', verdict.cls)}>{verdict.text}</span>}
+          {quote.link && <a href={quote.link} target="_blank" rel="noreferrer" className="text-inkm hover:text-ink"><Icon name="external" size={12} /></a>}
+        </div>
+      </div>
+      {quote.benchmarkGood != null && (
+        <div className="mt-3 pt-3 hairline">
+          <div className="text-[10px] uppercase tracking-wider text-inkm mb-1">Referências</div>
+          <div className="grid grid-cols-3 gap-1 text-[11px]">
+            <div><span className="text-ok">bom</span> <span className="num">{fmtMoneyCompact(quote.benchmarkGood, trip.baseCurrency)}</span></div>
+            <div><span className="text-warn">ok</span> <span className="num">{fmtMoneyCompact(quote.benchmarkOk || 0, trip.baseCurrency)}</span></div>
+            <div><span className="text-bad">alto</span> <span className="num">{fmtMoneyCompact(quote.benchmarkBad || 0, trip.baseCurrency)}</span></div>
+          </div>
+        </div>
+      )}
+      {editing && <QuoteModal trip={trip} quote={quote} onClose={() => setEditing(false)} />}
+    </div>
+  );
+}
+
+function QuoteModal({ trip, quote, onClose }) {
+  const { updateTrip } = useStore();
+  const isNew = !quote;
+  const [f, setF] = useState(() => quote ? { ...quote, price: quote.price ?? '' } : { type: 'flight', provider: '', price: '', currency: trip.baseCurrency, benchmarkGood: '', benchmarkOk: '', benchmarkBad: '', notes: '', link: '' });
+
+  const save = () => {
+    const q = {
+      id: quote?.id || uid('q_'),
+      type: f.type, provider: f.provider, price: f.price === '' ? null : Number(f.price),
+      currency: f.currency, benchmarkGood: f.benchmarkGood === '' ? null : Number(f.benchmarkGood),
+      benchmarkOk: f.benchmarkOk === '' ? null : Number(f.benchmarkOk),
+      benchmarkBad: f.benchmarkBad === '' ? null : Number(f.benchmarkBad),
+      notes: f.notes, link: f.link, status: f.status || 'searching',
+      createdAt: quote?.createdAt || new Date().toISOString(),
+    };
+    updateTrip(trip.id, t => ({ ...t, quotes: quote ? t.quotes.map(x => x.id === quote.id ? q : x) : [...t.quotes, q] }));
+    onClose();
+  };
+
+  return (
+    <Modal open onClose={onClose} title={isNew ? 'Nova cotação' : 'Editar cotação'} size="md"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save}>Salvar</Button></>}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><Label>Tipo</Label>
+          <Select value={f.type} onChange={e => setF({...f, type: e.target.value})}>
+            {BOOKING_TYPES.map(bt => <option key={bt.id} value={bt.id}>{bt.name}</option>)}
+          </Select>
+        </div>
+        <div><Label>Provedor / descrição</Label><TextInput value={f.provider} onChange={e => setF({...f, provider: e.target.value})} placeholder="Ex: LATAM direto" /></div>
+        <div><Label>Preço</Label><NumberInput value={f.price} onChange={e => setF({...f, price: e.target.value})} /></div>
+        <div><Label>Moeda</Label>
+          <Select value={f.currency} onChange={e => setF({...f, currency: e.target.value})}>
+            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+          </Select>
+        </div>
+        <div className="sm:col-span-2 grid grid-cols-3 gap-2 pt-2">
+          <div><Label>Bom até ({trip.baseCurrency})</Label><NumberInput value={f.benchmarkGood} onChange={e => setF({...f, benchmarkGood: e.target.value})} /></div>
+          <div><Label>Ok até</Label><NumberInput value={f.benchmarkOk} onChange={e => setF({...f, benchmarkOk: e.target.value})} /></div>
+          <div><Label>Caro até</Label><NumberInput value={f.benchmarkBad} onChange={e => setF({...f, benchmarkBad: e.target.value})} /></div>
+        </div>
+        <div className="sm:col-span-2"><Label>Link</Label><TextInput value={f.link} onChange={e => setF({...f, link: e.target.value})} placeholder="https://…" /></div>
+        <div className="sm:col-span-2"><Label>Notas</Label><TextArea rows={2} value={f.notes} onChange={e => setF({...f, notes: e.target.value})} /></div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ==================== SPLIT TAB ==================== */
+
+function SplitTab({ trip, fx }) {
+  if (trip.travelers.length === 0) {
+    return <EmptyState icon="users" title="Nenhum companheiro cadastrado" description="Adicione companheiros nas configurações da viagem para dividir despesas." />;
+  }
+
+  // Compute balances
+  const balances = {}; // travelerId -> amount pago menos deveria pagar
+  trip.travelers.forEach(t => balances[t.id] = 0);
+  const rows = [];
+
+  trip.days.forEach(d => d.blocks.forEach(b => {
+    if (b.cost == null || !b.paidBy) return;
+    const cc = b.currency || trip.baseCurrency;
+    let amount = Number(b.cost);
+    if (cc !== trip.baseCurrency && fx?.rates) {
+      const v = convert(amount, cc, trip.baseCurrency, fx.rates);
+      if (v == null) return;
+      amount = v;
+    }
+    const split = (b.splitBetween && b.splitBetween.length) ? b.splitBetween : trip.travelers.map(t => t.id);
+    const share = amount / split.length;
+    balances[b.paidBy] = (balances[b.paidBy] || 0) + amount;
+    split.forEach(id => { balances[id] = (balances[id] || 0) - share; });
+    rows.push({ dayDate: d.date, block: b, amount, payer: b.paidBy, splitBetween: split, share });
+  }));
+
+  // Settle balances
+  const settlements = settleBalances(balances);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-ink mb-3">Balanço</h3>
+        <ul className="space-y-2 mb-4">
+          {trip.travelers.map(t => (
+            <li key={t.id} className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background: t.color}} />{t.name || 'sem nome'}</span>
+              <span className={cx('num font-medium', balances[t.id] > 0.5 ? 'text-ok' : balances[t.id] < -0.5 ? 'text-bad' : 'text-inkm')}>{fmtMoney(balances[t.id], trip.baseCurrency)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="hairline pt-4">
+          <h4 className="text-xs uppercase tracking-widest text-inkm mb-2">Como acertar</h4>
+          {settlements.length === 0 ? <p className="text-sm text-inkm">Nada a acertar 👍</p> : (
+            <ul className="space-y-1.5">
+              {settlements.map((s, i) => {
+                const from = trip.travelers.find(t => t.id === s.from);
+                const to = trip.travelers.find(t => t.id === s.to);
+                return (
+                  <li key={i} className="text-sm flex items-center gap-2">
+                    <span className="font-medium">{from?.name}</span>
+                    <Icon name="chevronRight" size={12} className="text-inkm" />
+                    <span className="font-medium">{to?.name}</span>
+                    <span className="ml-auto num">{fmtMoney(s.amount, trip.baseCurrency)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-ink mb-3">Despesas divididas ({rows.length})</h3>
+        {rows.length === 0 ? <p className="text-xs text-inkm">Marque "quem pagou" nos blocos do roteiro para começar a dividir.</p> : (
+          <ul className="space-y-2 max-h-[500px] overflow-y-auto">
+            {rows.slice().reverse().map((r, i) => {
+              const p = trip.travelers.find(t => t.id === r.payer);
+              return (
+                <li key={i} className="text-xs border-l-2 pl-2 py-0.5" style={{borderColor: p?.color || '#0A0A0A'}}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-ink font-medium truncate">{r.block.title || 'sem título'}</span>
+                    <span className="num">{fmtMoney(r.amount, trip.baseCurrency)}</span>
+                  </div>
+                  <div className="text-inkm">
+                    {fmtDate(r.dayDate)} · pagou {p?.name} · {r.splitBetween.length}p · <span className="num">{fmtMoney(r.share, trip.baseCurrency)} cada</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function settleBalances(balances) {
+  const arr = Object.entries(balances).map(([id, amt]) => ({ id, amt }));
+  const debtors = arr.filter(a => a.amt < -0.5).sort((a,b) => a.amt - b.amt);
+  const creditors = arr.filter(a => a.amt > 0.5).sort((a,b) => b.amt - a.amt);
+  const out = [];
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(-debtors[i].amt, creditors[j].amt);
+    out.push({ from: debtors[i].id, to: creditors[j].id, amount: pay });
+    debtors[i].amt += pay;
+    creditors[j].amt -= pay;
+    if (Math.abs(debtors[i].amt) < 0.5) i++;
+    if (Math.abs(creditors[j].amt) < 0.5) j++;
+  }
+  return out;
+}
+
+/* ==================== NOTES TAB ==================== */
+
+function NotesTab({ trip }) {
+  const { updateTrip } = useStore();
+  const [v, setV] = useState(trip.notes);
+  useEffect(() => setV(trip.notes), [trip.id, trip.notes]);
+  const save = () => updateTrip(trip.id, t => ({ ...t, notes: v }));
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-ink">Anotações da viagem</h3>
+        {v !== trip.notes && <Button size="sm" variant="primary" onClick={save}>Salvar</Button>}
+      </div>
+      <TextArea value={v} onChange={e => setV(e.target.value)} rows={20} placeholder="Coisas importantes, aprendizados, links, ideias soltas…" />
+      <div className="text-xs text-inks mt-2">{v.length} caracteres · autosalva ao clicar em Salvar</div>
+    </div>
+  );
+}
+
+/* ==================== CONVERTER MODAL ==================== */
+
+function ConverterModal({ open, onClose, baseCurrency }) {
+  const fx = useFx(baseCurrency);
+  const [amount, setAmount] = useState(100);
+  const [from, setFrom] = useState(baseCurrency);
+  const [to, setTo] = useState('USD');
+
+  useEffect(() => { if (open) setFrom(baseCurrency); }, [open, baseCurrency]);
+
+  const result = fx.rates ? convert(Number(amount) || 0, from, to, fx.rates) : null;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Câmbio" size="sm"
+      footer={<Button onClick={onClose}>Fechar</Button>}>
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-2"><Label>Valor</Label><NumberInput value={amount} onChange={e => setAmount(e.target.value)} autoFocus /></div>
+          <div><Label>De</Label>
+            <Select value={from} onChange={e => setFrom(e.target.value)}>
+              {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 items-end">
+          <div className="col-span-2">
+            <Label>Resultado</Label>
+            <div className="field bg-stone-50 text-xl font-semibold num">{result != null ? fmtMoney(result, to) : (fx.loading ? '…' : '—')}</div>
+          </div>
+          <div><Label>Para</Label>
+            <Select value={to} onChange={e => setTo(e.target.value)}>
+              {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-2 hairline">
+          <div className="text-[11px] text-inks">{fx.rates ? `${fx.rates.stale ? '⚠ cache · ' : ''}Fonte ${fx.rates.source || 'cache'} · ${new Date(fx.rates.ts).toLocaleString('pt-BR')}` : 'Sem cotação'}</div>
+          <Button size="xs" icon="refresh" onClick={fx.refresh} disabled={fx.loading}>Atualizar</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ==================== MOUNT ==================== */
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

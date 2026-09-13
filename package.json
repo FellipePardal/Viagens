@@ -1,0 +1,14 @@
+{
+  "name": "viagens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Passageiro — planejador de viagens colaborativo",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node serve.js",
+    "start": "node serve.js"
+  },
+  "devDependencies": {
+    "@babel/standalone": "^7.24.0"
+  }
+}

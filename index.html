@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0A0A0A">
-<title>Travel Planner — Planejamento de viagens</title>
+<title>Bora — planejamento de viagens</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3486,9 +3486,9 @@ function LoginScreen() {
     style: {
       background: 'var(--accent)'
     }
-  }, "P"), /*#__PURE__*/React.createElement("h1", {
+  }, "B"), /*#__PURE__*/React.createElement("h1", {
     className: "text-4xl font-black tracking-tight"
-  }, "Passageiro"), /*#__PURE__*/React.createElement("p", {
+  }, "Bora"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-inkm mt-3"
   }, "Planeje suas viagens, sozinho ou junto.")), /*#__PURE__*/React.createElement("div", {
     className: "card card-elevated p-6 sm:p-8"
@@ -3629,7 +3629,7 @@ function RecoveryScreen({
     style: {
       background: 'var(--accent)'
     }
-  }, "P"), /*#__PURE__*/React.createElement("h1", {
+  }, "B"), /*#__PURE__*/React.createElement("h1", {
     className: "text-2xl font-bold"
   }, "Nova senha"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-ink-3 mt-1"
@@ -4025,9 +4025,9 @@ function Sidebar({
     style: {
       background: 'var(--accent)'
     }
-  }, "P"), /*#__PURE__*/React.createElement("span", {
+  }, "B"), /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-semibold uppercase tracking-wider text-ink-3"
-  }, "Passageiro")), /*#__PURE__*/React.createElement("div", {
+  }, "Bora")), /*#__PURE__*/React.createElement("div", {
     className: "mx-3 relative"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setSwitcherOpen(v => !v),
@@ -4288,7 +4288,7 @@ function MobileTopBar({
     style: {
       background: 'var(--accent)'
     }
-  }, "P"), /*#__PURE__*/React.createElement("div", {
+  }, "B"), /*#__PURE__*/React.createElement("div", {
     className: "min-w-0 text-left"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-[10px] text-ink-3 font-semibold uppercase tracking-wider"
@@ -4491,11 +4491,11 @@ function LibraryView({
     style: {
       background: 'var(--accent)'
     }
-  }, "P"), /*#__PURE__*/React.createElement("div", {
+  }, "B"), /*#__PURE__*/React.createElement("div", {
     className: "text-left"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-lg font-bold leading-none"
-  }, "Passageiro"), /*#__PURE__*/React.createElement("div", {
+  }, "Bora"), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-ink-3 mt-1"
   }, "planejador de viagens"))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center gap-2 justify-end flex-shrink-0"
@@ -5290,7 +5290,7 @@ function icsDateTime(iso, time) {
   return dt + 'T' + tm;
 }
 function generateICS(trip) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Passageiro//Viagens//PT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + icsEscape(trip.name), 'X-WR-TIMEZONE:America/Sao_Paulo'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Bora//Viagens//PT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + icsEscape(trip.name), 'X-WR-TIMEZONE:America/Sao_Paulo'];
   (trip.days || []).forEach(day => {
     (day.blocks || []).forEach(block => {
       const uid = `${block.id}@passageiro-viagens`;

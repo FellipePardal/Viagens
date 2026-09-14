@@ -1552,6 +1552,74 @@ function NumberInput({ className = '', ...rest }) {
   return <input type="number" step="any" className={cx('field num', className)} {...rest} />;
 }
 
+/**
+ * CurrencyInput — formata como pt-BR (R$ 1.234,56) enquanto o usuário digita.
+ * Valor externo (value/onChange) é sempre número puro (float) ou vazio ("").
+ * currency default 'BRL' controla o símbolo mostrado.
+ */
+function CurrencyInput({ value, onChange, currency = 'BRL', className = '', placeholder, ...rest }) {
+  const symbol = currencySymbol(currency);
+  const [text, setText] = useState(() => value == null || value === '' ? '' : formatBRNumber(Number(value)));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (focused) return;
+    if (value == null || value === '') setText('');
+    else setText(formatBRNumber(Number(value)));
+  }, [value, focused]);
+
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    // Deixa o usuário digitar dígitos, vírgula, ponto e sinal
+    const cleaned = raw.replace(/[^\d,.-]/g, '');
+    setText(cleaned);
+    const num = parseBRNumber(cleaned);
+    onChange({ target: { value: num == null ? '' : String(num) } });
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    if (text === '') { onChange({ target: { value: '' } }); return; }
+    const num = parseBRNumber(text);
+    if (num == null) { setText(''); onChange({ target: { value: '' } }); }
+    else { setText(formatBRNumber(num)); onChange({ target: { value: String(num) } }); }
+  };
+
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-3 pointer-events-none select-none">{symbol}</span>
+      <input
+        type="text" inputMode="decimal"
+        value={text}
+        onChange={handleChange}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
+        placeholder={placeholder || '0,00'}
+        className={cx('field num pl-9', className)}
+        {...rest}
+      />
+    </div>
+  );
+}
+
+function formatBRNumber(n) {
+  if (n == null || isNaN(n)) return '';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function parseBRNumber(s) {
+  if (!s) return null;
+  // Remove tudo que não é dígito, vírgula, ponto ou sinal
+  let t = String(s).trim().replace(/[^\d,.-]/g, '');
+  if (!t) return null;
+  // Se tem vírgula, assume que é o decimal separator BR
+  if (t.includes(',')) {
+    // Remove pontos (thousands sep) e troca vírgula por ponto
+    t = t.replace(/\./g, '').replace(',', '.');
+  }
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+
 function TextArea({ className = '', ...rest }) {
   return <textarea className={cx('field resize-y', className)} {...rest} />;
 }
@@ -2676,7 +2744,7 @@ function NewTripWizard({ open, onClose, onCreate, existingTrips }) {
           </div>
           <div>
             <Label>Teto de orçamento</Label>
-            <NumberInput value={form.budgetCeiling} onChange={e => setForm({ ...form, budgetCeiling: e.target.value })} placeholder="Ex: 10000" />
+            <CurrencyInput value={form.budgetCeiling} onChange={e => setForm({ ...form, budgetCeiling: e.target.value })} currency={form.baseCurrency} placeholder="10.000,00" />
           </div>
           <div className="sm:col-span-2">
             <Label hint="opcional">Moedas secundárias</Label>
@@ -2729,6 +2797,45 @@ function TripView({ trip, onOpenLibrary, onConvert }) {
         </main>
         <MobileBottomNav tab={tab} onTab={setTab} criticalCount={criticalCount} />
       </div>
+    </div>
+  );
+}
+
+function TripActionsMenu({ onShare, onExport, onPrint, onEdit, onSettings, copied }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+
+  const items = [
+    { label: copied ? 'Link copiado ✓' : 'Copiar link', icon: 'link',    onClick: onShare },
+    { label: 'Exportar JSON',              icon: 'download',  onClick: onExport },
+    { label: 'Imprimir / PDF',             icon: 'printer',   onClick: onPrint },
+    { divider: true },
+    { label: 'Editar viagem',              icon: 'edit',      onClick: onEdit },
+    { label: 'Configurações',              icon: 'settings',  onClick: onSettings },
+  ];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(v => !v)} className="p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors" title="Mais ações">
+        <Icon name="menu" size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 min-w-[220px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
+          {items.map((it, i) => it.divider
+            ? <div key={i} className="border-t border-rule my-1"></div>
+            : <button key={i} onClick={() => { setOpen(false); it.onClick(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm">
+                <Icon name={it.icon} size={14} className="text-ink-3" />
+                <span>{it.label}</span>
+              </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -2786,16 +2893,14 @@ function TripHeader({ trip, daysToGo }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 no-print flex-shrink-0">
+        <div className="flex items-center gap-3 no-print flex-shrink-0">
           <MembersAvatars trip={trip} onClick={() => setMembers(true)} />
-          <Button variant="accent" size="sm" icon="plus" onClick={() => setMembers(true)}>Convidar</Button>
-          <div className="hidden sm:flex items-center gap-1">
-            <IconButton icon="link" onClick={share} title={copied ? 'Link copiado!' : 'Copiar link compartilhável'} />
-            <IconButton icon="download" onClick={exportTrip} title="Exportar JSON" />
-            <IconButton icon="printer" onClick={printPage} title="Imprimir / salvar em PDF" />
-          </div>
-          <IconButton icon="edit" onClick={() => setEditing(true)} title="Editar viagem" />
-          <IconButton icon="settings" onClick={() => setSettings(true)} title="Configurações" />
+          <Button variant="accent" size="sm" icon="users" onClick={() => setMembers(true)}>Convidar</Button>
+          <TripActionsMenu
+            onShare={share} onExport={exportTrip} onPrint={printPage}
+            onEdit={() => setEditing(true)} onSettings={() => setSettings(true)}
+            copied={copied}
+          />
         </div>
       </div>
 
@@ -2967,7 +3072,7 @@ function TripEditModal({ open, onClose, trip }) {
         <div className="sm:col-span-2"><Label>Destino</Label><TextInput value={f.destination} onChange={e => setF({...f, destination: e.target.value})} /></div>
         <div><Label>Ida</Label><TextInput type="date" value={f.startDate} onChange={e => setF({...f, startDate: e.target.value})} /></div>
         <div><Label>Volta</Label><TextInput type="date" value={f.endDate} onChange={e => setF({...f, endDate: e.target.value})} /></div>
-        <div className="sm:col-span-2"><Label>Teto de orçamento ({f.baseCurrency})</Label><NumberInput value={f.budgetCeiling} onChange={e => setF({...f, budgetCeiling: e.target.value})} /></div>
+        <div className="sm:col-span-2"><Label>Teto de orçamento</Label><CurrencyInput value={f.budgetCeiling} onChange={e => setF({...f, budgetCeiling: e.target.value})} currency={f.baseCurrency} /></div>
       </div>
     </Modal>
   );
@@ -3373,7 +3478,7 @@ function CategoryEditModal({ trip, category, onClose }) {
       footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={save}>Salvar</Button></>}>
       <div className="space-y-3">
         <div><Label>Nome</Label><TextInput value={f.name} onChange={e => setF({...f, name: e.target.value})} /></div>
-        <div><Label>Valor orçado ({trip.baseCurrency})</Label><NumberInput value={f.budgeted} onChange={e => setF({...f, budgeted: e.target.value})} /></div>
+        <div><Label>Valor orçado</Label><CurrencyInput value={f.budgeted} onChange={e => setF({...f, budgeted: e.target.value})} currency={trip.baseCurrency} /></div>
         <div><Label>Cor</Label>
           <div className="flex flex-wrap gap-1.5">
             {CATEGORY_COLORS.map(c => (
@@ -3393,7 +3498,7 @@ function CeilingEditModal({ trip, onClose }) {
   return (
     <Modal open onClose={onClose} title="Teto de orçamento" size="sm"
       footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={() => { updateTrip(trip.id, t => ({ ...t, budgetCeiling: Number(v) || 0 })); onClose(); }}>Salvar</Button></>}>
-      <div><Label>Valor máximo ({trip.baseCurrency})</Label><NumberInput value={v} onChange={e => setV(e.target.value)} autoFocus /></div>
+      <div><Label>Valor máximo</Label><CurrencyInput value={v} onChange={e => setV(e.target.value)} currency={trip.baseCurrency} autoFocus /></div>
     </Modal>
   );
 }
@@ -3658,7 +3763,7 @@ function BlockModal({ trip, day, block, onClose }) {
         <div className="sm:col-span-2"><Label>Título</Label><TextInput value={f.title} onChange={e => setF({...f, title: e.target.value})} placeholder="Ex: Almoço no Mercado del Puerto" autoFocus /></div>
         <div><Label>Hora</Label><TextInput type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} /></div>
         <div><Label>Local</Label><TextInput value={f.location} onChange={e => setF({...f, location: e.target.value})} placeholder="Endereço, bairro ou ponto" /></div>
-        <div><Label>Custo</Label><NumberInput value={f.cost ?? ''} onChange={e => setF({...f, cost: e.target.value})} placeholder="0.00" /></div>
+        <div><Label>Custo</Label><CurrencyInput value={f.cost ?? ''} onChange={e => setF({...f, cost: e.target.value})} currency={f.currency || trip.baseCurrency} /></div>
         <div><Label>Moeda</Label>
           <Select value={f.currency || trip.baseCurrency} onChange={e => setF({...f, currency: e.target.value})}>
             {[trip.baseCurrency, ...trip.secondaryCurrencies].filter((c,i,a) => a.indexOf(c) === i).map(c => <option key={c} value={c}>{c}</option>)}
@@ -4085,16 +4190,16 @@ function QuoteModal({ trip, quote, onClose }) {
           </Select>
         </div>
         <div><Label>Provedor / descrição</Label><TextInput value={f.provider} onChange={e => setF({...f, provider: e.target.value})} placeholder="Ex: LATAM direto" /></div>
-        <div><Label>Preço</Label><NumberInput value={f.price} onChange={e => setF({...f, price: e.target.value})} /></div>
+        <div><Label>Preço</Label><CurrencyInput value={f.price} onChange={e => setF({...f, price: e.target.value})} currency={f.currency || 'BRL'} /></div>
         <div><Label>Moeda</Label>
           <Select value={f.currency} onChange={e => setF({...f, currency: e.target.value})}>
             {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
           </Select>
         </div>
         <div className="sm:col-span-2 grid grid-cols-3 gap-2 pt-2">
-          <div><Label>Bom até ({trip.baseCurrency})</Label><NumberInput value={f.benchmarkGood} onChange={e => setF({...f, benchmarkGood: e.target.value})} /></div>
-          <div><Label>Ok até</Label><NumberInput value={f.benchmarkOk} onChange={e => setF({...f, benchmarkOk: e.target.value})} /></div>
-          <div><Label>Caro até</Label><NumberInput value={f.benchmarkBad} onChange={e => setF({...f, benchmarkBad: e.target.value})} /></div>
+          <div><Label>Bom até</Label><CurrencyInput value={f.benchmarkGood} onChange={e => setF({...f, benchmarkGood: e.target.value})} currency={trip.baseCurrency} /></div>
+          <div><Label>Ok até</Label><CurrencyInput value={f.benchmarkOk} onChange={e => setF({...f, benchmarkOk: e.target.value})} currency={trip.baseCurrency} /></div>
+          <div><Label>Caro até</Label><CurrencyInput value={f.benchmarkBad} onChange={e => setF({...f, benchmarkBad: e.target.value})} currency={trip.baseCurrency} /></div>
         </div>
         <div className="sm:col-span-2"><Label>Link</Label><TextInput value={f.link} onChange={e => setF({...f, link: e.target.value})} placeholder="https://…" /></div>
         <div className="sm:col-span-2"><Label>Notas</Label><TextArea rows={2} value={f.notes} onChange={e => setF({...f, notes: e.target.value})} /></div>

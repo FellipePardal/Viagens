@@ -2369,6 +2369,101 @@ function NumberInput({
     className: cx('field num', className)
   }, rest));
 }
+
+/**
+ * CurrencyInput — formata como pt-BR (R$ 1.234,56) enquanto o usuário digita.
+ * Valor externo (value/onChange) é sempre número puro (float) ou vazio ("").
+ * currency default 'BRL' controla o símbolo mostrado.
+ */
+function CurrencyInput({
+  value,
+  onChange,
+  currency = 'BRL',
+  className = '',
+  placeholder,
+  ...rest
+}) {
+  const symbol = currencySymbol(currency);
+  const [text, setText] = useState(() => value == null || value === '' ? '' : formatBRNumber(Number(value)));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (focused) return;
+    if (value == null || value === '') setText('');else setText(formatBRNumber(Number(value)));
+  }, [value, focused]);
+  const handleChange = e => {
+    const raw = e.target.value;
+    // Deixa o usuário digitar dígitos, vírgula, ponto e sinal
+    const cleaned = raw.replace(/[^\d,.-]/g, '');
+    setText(cleaned);
+    const num = parseBRNumber(cleaned);
+    onChange({
+      target: {
+        value: num == null ? '' : String(num)
+      }
+    });
+  };
+  const handleBlur = () => {
+    setFocused(false);
+    if (text === '') {
+      onChange({
+        target: {
+          value: ''
+        }
+      });
+      return;
+    }
+    const num = parseBRNumber(text);
+    if (num == null) {
+      setText('');
+      onChange({
+        target: {
+          value: ''
+        }
+      });
+    } else {
+      setText(formatBRNumber(num));
+      onChange({
+        target: {
+          value: String(num)
+        }
+      });
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "relative"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-3 pointer-events-none select-none"
+  }, symbol), /*#__PURE__*/React.createElement("input", _extends({
+    type: "text",
+    inputMode: "decimal",
+    value: text,
+    onChange: handleChange,
+    onFocus: () => setFocused(true),
+    onBlur: handleBlur,
+    placeholder: placeholder || '0,00',
+    className: cx('field num pl-9', className)
+  }, rest)));
+}
+function formatBRNumber(n) {
+  if (n == null || isNaN(n)) return '';
+  return n.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+function parseBRNumber(s) {
+  if (!s) return null;
+  // Remove tudo que não é dígito, vírgula, ponto ou sinal
+  let t = String(s).trim().replace(/[^\d,.-]/g, '');
+  if (!t) return null;
+  // Se tem vírgula, assume que é o decimal separator BR
+  if (t.includes(',')) {
+    // Remove pontos (thousands sep) e troca vírgula por ponto
+    t = t.replace(/\./g, '').replace(',', '.');
+  }
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
 function TextArea({
   className = '',
   ...rest
@@ -4088,13 +4183,14 @@ function NewTripWizard({
   }, CURRENCIES.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.code,
     value: c.code
-  }, c.code, " \u2014 ", c.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Teto de or\xE7amento"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, c.code, " \u2014 ", c.name)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Teto de or\xE7amento"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: form.budgetCeiling,
     onChange: e => setForm({
       ...form,
       budgetCeiling: e.target.value
     }),
-    placeholder: "Ex: 10000"
+    currency: form.baseCurrency,
+    placeholder: "10.000,00"
   })), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
   }, /*#__PURE__*/React.createElement(Label, {
@@ -4178,6 +4274,78 @@ function TripView({
     criticalCount: criticalCount
   })));
 }
+function TripActionsMenu({
+  onShare,
+  onExport,
+  onPrint,
+  onEdit,
+  onSettings,
+  copied
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = e => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+  const items = [{
+    label: copied ? 'Link copiado ✓' : 'Copiar link',
+    icon: 'link',
+    onClick: onShare
+  }, {
+    label: 'Exportar JSON',
+    icon: 'download',
+    onClick: onExport
+  }, {
+    label: 'Imprimir / PDF',
+    icon: 'printer',
+    onClick: onPrint
+  }, {
+    divider: true
+  }, {
+    label: 'Editar viagem',
+    icon: 'edit',
+    onClick: onEdit
+  }, {
+    label: 'Configurações',
+    icon: 'settings',
+    onClick: onSettings
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "relative",
+    ref: ref
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setOpen(v => !v),
+    className: "p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors",
+    title: "Mais a\xE7\xF5es"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "menu",
+    size: 16
+  })), open && /*#__PURE__*/React.createElement("div", {
+    className: "absolute right-0 top-full mt-2 min-w-[220px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50",
+    style: {
+      boxShadow: 'var(--shadow-lg)'
+    }
+  }, items.map((it, i) => it.divider ? /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "border-t border-rule my-1"
+  }) : /*#__PURE__*/React.createElement("button", {
+    key: i,
+    onClick: () => {
+      setOpen(false);
+      it.onClick();
+    },
+    className: "w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: it.icon,
+    size: 14,
+    className: "text-ink-3"
+  }), /*#__PURE__*/React.createElement("span", null, it.label)))));
+}
 function TripHeader({
   trip,
   daysToGo
@@ -4249,37 +4417,22 @@ function TripHeader({
   }), /*#__PURE__*/React.createElement("span", {
     className: "text-accent font-semibold"
   }, "em ", daysToGo, " ", daysToGo === 1 ? 'dia' : 'dias')))), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2 no-print flex-shrink-0"
+    className: "flex items-center gap-3 no-print flex-shrink-0"
   }, /*#__PURE__*/React.createElement(MembersAvatars, {
     trip: trip,
     onClick: () => setMembers(true)
   }), /*#__PURE__*/React.createElement(Button, {
     variant: "accent",
     size: "sm",
-    icon: "plus",
+    icon: "users",
     onClick: () => setMembers(true)
-  }, "Convidar"), /*#__PURE__*/React.createElement("div", {
-    className: "hidden sm:flex items-center gap-1"
-  }, /*#__PURE__*/React.createElement(IconButton, {
-    icon: "link",
-    onClick: share,
-    title: copied ? 'Link copiado!' : 'Copiar link compartilhável'
-  }), /*#__PURE__*/React.createElement(IconButton, {
-    icon: "download",
-    onClick: exportTrip,
-    title: "Exportar JSON"
-  }), /*#__PURE__*/React.createElement(IconButton, {
-    icon: "printer",
-    onClick: printPage,
-    title: "Imprimir / salvar em PDF"
-  })), /*#__PURE__*/React.createElement(IconButton, {
-    icon: "edit",
-    onClick: () => setEditing(true),
-    title: "Editar viagem"
-  }), /*#__PURE__*/React.createElement(IconButton, {
-    icon: "settings",
-    onClick: () => setSettings(true),
-    title: "Configura\xE7\xF5es"
+  }, "Convidar"), /*#__PURE__*/React.createElement(TripActionsMenu, {
+    onShare: share,
+    onExport: exportTrip,
+    onPrint: printPage,
+    onEdit: () => setEditing(true),
+    onSettings: () => setSettings(true),
+    copied: copied
   }))), copied && /*#__PURE__*/React.createElement("div", {
     className: "fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white text-sm px-5 py-3 z-50 fade-in font-medium rounded-lg",
     style: {
@@ -4560,12 +4713,13 @@ function TripEditModal({
     })
   })), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
-  }, /*#__PURE__*/React.createElement(Label, null, "Teto de or\xE7amento (", f.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, /*#__PURE__*/React.createElement(Label, null, "Teto de or\xE7amento"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.budgetCeiling,
     onChange: e => setF({
       ...f,
       budgetCeiling: e.target.value
-    })
+    }),
+    currency: f.baseCurrency
   }))));
 }
 function TripSettingsModal({
@@ -5211,12 +5365,13 @@ function CategoryEditModal({
       ...f,
       name: e.target.value
     })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor or\xE7ado (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor or\xE7ado"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.budgeted,
     onChange: e => setF({
       ...f,
       budgeted: e.target.value
-    })
+    }),
+    currency: trip.baseCurrency
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Cor"), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-1.5"
   }, CATEGORY_COLORS.map(c => /*#__PURE__*/React.createElement("button", {
@@ -5264,9 +5419,10 @@ function CeilingEditModal({
         onClose();
       }
     }, "Salvar"))
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor m\xE1ximo (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Valor m\xE1ximo"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: v,
     onChange: e => setV(e.target.value),
+    currency: trip.baseCurrency,
     autoFocus: true
   })));
 }
@@ -5801,13 +5957,13 @@ function BlockModal({
       location: e.target.value
     }),
     placeholder: "Endere\xE7o, bairro ou ponto"
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Custo"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Custo"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.cost ?? '',
     onChange: e => setF({
       ...f,
       cost: e.target.value
     }),
-    placeholder: "0.00"
+    currency: f.currency || trip.baseCurrency
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Moeda"), /*#__PURE__*/React.createElement(Select, {
     value: f.currency || trip.baseCurrency,
     onChange: e => setF({
@@ -6562,12 +6718,13 @@ function QuoteModal({
       provider: e.target.value
     }),
     placeholder: "Ex: LATAM direto"
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Pre\xE7o"), /*#__PURE__*/React.createElement(NumberInput, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Pre\xE7o"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.price,
     onChange: e => setF({
       ...f,
       price: e.target.value
-    })
+    }),
+    currency: f.currency || 'BRL'
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Moeda"), /*#__PURE__*/React.createElement(Select, {
     value: f.currency,
     onChange: e => setF({
@@ -6579,24 +6736,27 @@ function QuoteModal({
     value: c.code
   }, c.code)))), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2 grid grid-cols-3 gap-2 pt-2"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Bom at\xE9 (", trip.baseCurrency, ")"), /*#__PURE__*/React.createElement(NumberInput, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Bom at\xE9"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.benchmarkGood,
     onChange: e => setF({
       ...f,
       benchmarkGood: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Ok at\xE9"), /*#__PURE__*/React.createElement(NumberInput, {
+    }),
+    currency: trip.baseCurrency
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Ok at\xE9"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.benchmarkOk,
     onChange: e => setF({
       ...f,
       benchmarkOk: e.target.value
-    })
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Caro at\xE9"), /*#__PURE__*/React.createElement(NumberInput, {
+    }),
+    currency: trip.baseCurrency
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Caro at\xE9"), /*#__PURE__*/React.createElement(CurrencyInput, {
     value: f.benchmarkBad,
     onChange: e => setF({
       ...f,
       benchmarkBad: e.target.value
-    })
+    }),
+    currency: trip.baseCurrency
   }))), /*#__PURE__*/React.createElement("div", {
     className: "sm:col-span-2"
   }, /*#__PURE__*/React.createElement(Label, null, "Link"), /*#__PURE__*/React.createElement(TextInput, {

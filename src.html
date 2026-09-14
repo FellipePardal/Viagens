@@ -2445,12 +2445,22 @@ function LibraryView({ onOpen, onClose, onConvert }) {
                 <div className="text-xs text-ink-3 mt-1">planejador de viagens</div>
               </div>
             </button>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-2 justify-end flex-shrink-0">
               <input type="file" ref={fileRef} onChange={importFile} accept="application/json" className="hidden" />
-              <Button variant="ghost" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>Importar</Button>
-              <Button variant="ghost" size="sm" icon="download" onClick={exportAll}>Backup</Button>
-              {onConvert && <Button variant="ghost" size="sm" icon="refresh" onClick={onConvert}>Câmbio</Button>}
-              <Button variant="accent" size="sm" icon="plus" onClick={() => setWizardOpen(true)}>Nova viagem</Button>
+              <div className="hidden md:flex items-center gap-2">
+                <Button variant="ghost" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>Importar</Button>
+                <Button variant="ghost" size="sm" icon="download" onClick={exportAll}>Backup</Button>
+                {onConvert && <Button variant="ghost" size="sm" icon="refresh" onClick={onConvert}>Câmbio</Button>}
+              </div>
+              <LibraryActionsMenu
+                onImport={() => fileRef.current?.click()}
+                onBackup={exportAll}
+                onConvert={onConvert}
+              />
+              <Button variant="accent" size="sm" icon="plus" onClick={() => setWizardOpen(true)}>
+                <span className="hidden sm:inline">Nova viagem</span>
+                <span className="sm:hidden">Nova</span>
+              </Button>
               <UserMenuCompact />
             </div>
           </div>
@@ -2801,6 +2811,31 @@ function TripView({ trip, onOpenLibrary, onConvert }) {
   );
 }
 
+function LibraryActionsMenu({ onImport, onBackup, onConvert }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+  return (
+    <div className="relative md:hidden" ref={ref}>
+      <button onClick={() => setOpen(v => !v)} className="p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors" title="Mais">
+        <Icon name="menu" size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 min-w-[180px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
+          <button onClick={() => { setOpen(false); onImport(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="upload" size={14} className="text-ink-3" />Importar JSON</button>
+          <button onClick={() => { setOpen(false); onBackup(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="download" size={14} className="text-ink-3" />Baixar backup</button>
+          {onConvert && <button onClick={() => { setOpen(false); onConvert(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="refresh" size={14} className="text-ink-3" />Conversor câmbio</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TripActionsMenu({ onShare, onExport, onPrint, onEdit, onSettings, copied }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -2893,9 +2928,11 @@ function TripHeader({ trip, daysToGo }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3 no-print flex-shrink-0">
+        <div className="flex items-center gap-2 no-print flex-shrink-0">
           <MembersAvatars trip={trip} onClick={() => setMembers(true)} />
-          <Button variant="accent" size="sm" icon="users" onClick={() => setMembers(true)}>Convidar</Button>
+          <Button variant="accent" size="sm" icon="users" onClick={() => setMembers(true)}>
+            <span className="hidden sm:inline">Convidar</span>
+          </Button>
           <TripActionsMenu
             onShare={share} onExport={exportTrip} onPrint={printPage}
             onEdit={() => setEditing(true)} onSettings={() => setSettings(true)}

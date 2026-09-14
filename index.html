@@ -5165,6 +5165,18 @@ function TripView({
   const daysToGo = daysBetween(isoToday(), trip.startDate);
   const criticalCount = trip.checklist.filter(c => !c.done && c.critical).length;
 
+  // Notifica quando opção vira 'preferred' automaticamente (consenso de votos)
+  const seenPreferredRef = useRef(new Map()); // optionId -> last status seen
+  useEffect(() => {
+    (trip.options || []).forEach(o => {
+      const prev = seenPreferredRef.current.get(o.id);
+      seenPreferredRef.current.set(o.id, o.status);
+      if (prev === 'considering' && o.status === 'preferred' && trip.members?.length >= 2) {
+        toast.success(`Todos votaram positivo! "${o.name}" virou Preferida.`);
+      }
+    });
+  }, [trip.options]);
+
   // Notifica menções direcionadas a mim em option_comments (via refetch de trip)
   const seenCommentsRef = useRef(new Set());
   useEffect(() => {

@@ -509,6 +509,63 @@ const uid = (prefix = '') => typeof crypto !== 'undefined' && crypto.randomUUID 
 const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join(' ');
 const clone = obj => JSON.parse(JSON.stringify(obj));
 
+/* ==================== TOAST (helper global + host) ==================== */
+
+const _toastListeners = new Set();
+const toast = {
+  show: (message, opts = {}) => {
+    const evt = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()),
+      message,
+      variant: opts.variant || 'info',
+      duration: opts.duration ?? (opts.variant === 'error' ? 5000 : 3000)
+    };
+    _toastListeners.forEach(fn => fn(evt));
+    return evt.id;
+  },
+  success: (m, o) => toast.show(m, {
+    ...o,
+    variant: 'success'
+  }),
+  error: (m, o) => toast.show(m, {
+    ...o,
+    variant: 'error'
+  }),
+  info: (m, o) => toast.show(m, {
+    ...o,
+    variant: 'info'
+  })
+};
+function ToastHost() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    const handler = evt => {
+      setItems(prev => [...prev, evt]);
+      if (evt.duration > 0) {
+        setTimeout(() => setItems(prev => prev.filter(x => x.id !== evt.id)), evt.duration);
+      }
+    };
+    _toastListeners.add(handler);
+    return () => _toastListeners.delete(handler);
+  }, []);
+  const dismiss = id => setItems(prev => prev.filter(x => x.id !== id));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed bottom-4 right-4 z-[10000] flex flex-col gap-2 pointer-events-none max-w-sm"
+  }, items.map(t => /*#__PURE__*/React.createElement("div", {
+    key: t.id,
+    onClick: () => dismiss(t.id),
+    role: "status",
+    className: cx('pointer-events-auto px-4 py-3 rounded-lg text-sm font-medium shadow-lg fade-in cursor-pointer border flex items-start gap-2', t.variant === 'success' && 'bg-paper border-ok text-ink', t.variant === 'error' && 'bg-paper border-bad text-ink', t.variant === 'info' && 'bg-paper border-rule-2 text-ink'),
+    style: {
+      boxShadow: 'var(--shadow-lg)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: cx('mt-0.5 text-base leading-none', t.variant === 'success' && 'text-ok', t.variant === 'error' && 'text-bad', t.variant === 'info' && 'text-ink-3')
+  }, t.variant === 'success' ? '✓' : t.variant === 'error' ? '✕' : 'ⓘ'), /*#__PURE__*/React.createElement("span", {
+    className: "flex-1 whitespace-pre-wrap"
+  }, t.message))));
+}
+
 /** Remove duplicatas por id preservando ordem (primeiro ocorre wins). */
 function uniqueById(arr) {
   const seen = new Set();
@@ -1746,10 +1803,13 @@ async function acceptPendingInvites(user) {
       data,
       error
     } = await SB.rpc('accept_pending_invites');
-    if (error) console.warn('accept_pending_invites RPC:', error.message);else if (data && data > 0) accepted.push({
-      count: data,
-      via: 'email'
-    });
+    if (error) console.warn('accept_pending_invites RPC:', error.message);else if (data && data > 0) {
+      accepted.push({
+        count: data,
+        via: 'email'
+      });
+      toast.success(`Você entrou em ${data} viagem${data > 1 ? 's' : ''} nova${data > 1 ? 's' : ''}.`);
+    }
   } catch (e) {
     console.warn('accept RPC failed:', e);
   }
@@ -1765,7 +1825,7 @@ async function acceptPendingInvites(user) {
       } = await SB.rpc('accept_invite_token', {
         _token: token
       });
-      if (error) alert('Erro ao aceitar convite: ' + error.message);else if (tripId) accepted.push({
+      if (error) toast.error('Erro ao aceitar convite: ' + error.message);else if (tripId) accepted.push({
         tripId,
         via: 'token'
       });
@@ -2188,7 +2248,7 @@ function StoreProvider({
       } catch (e) {
         console.error(e);
         setError(e.message);
-        alert('Erro ao criar viagem: ' + e.message);
+        toast.error('Erro ao criar viagem: ' + e.message);
         return null;
       }
     },
@@ -2209,7 +2269,7 @@ function StoreProvider({
         });
       } catch (e) {
         console.error(e);
-        alert('Erro ao apagar: ' + e.message);
+        toast.error('Erro ao apagar: ' + e.message);
       }
     },
     refetchList,
@@ -2269,7 +2329,7 @@ function StoreProvider({
       setMigrationPrompt(null);
       localStorage.setItem('migration_done_v1', 'true');
       const failed = results.filter(r => !r.ok);
-      if (failed.length === 0) alert(`✓ ${results.length} viagem(s) importada(s) com sucesso.`);else alert(`Importadas ${results.length - failed.length}/${results.length}. Falhas:\n${failed.map(f => `- ${f.name}: ${f.error}`).join('\n')}`);
+      if (failed.length === 0) toast.success(`${results.length} viagem(s) importada(s).`);else toast.error(`Importadas ${results.length - failed.length}/${results.length}. Falhas:\n${failed.map(f => `- ${f.name}: ${f.error}`).join('\n')}`);
     }
   }), [trips, tripsById, activeTripId, loading, saving, error, user, refetchActive, refetchList, migrationPrompt]);
   return /*#__PURE__*/React.createElement(StoreContext.Provider, {
@@ -2945,7 +3005,7 @@ function App() {
       className: "text-sm text-inkm mt-2"
     }, "Verifique ", /*#__PURE__*/React.createElement("code", null, "window.SUPABASE_CONFIG"), " no HTML.")));
   }
-  return /*#__PURE__*/React.createElement(AuthProvider, null, /*#__PURE__*/React.createElement(AuthGate, null, /*#__PURE__*/React.createElement(StoreProvider, null, /*#__PURE__*/React.createElement(StoreGate, null, /*#__PURE__*/React.createElement(AppShell, null)))));
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(AuthProvider, null, /*#__PURE__*/React.createElement(AuthGate, null, /*#__PURE__*/React.createElement(StoreProvider, null, /*#__PURE__*/React.createElement(StoreGate, null, /*#__PURE__*/React.createElement(AppShell, null))))), /*#__PURE__*/React.createElement(ToastHost, null));
 }
 function LoadingScreen({
   msg
@@ -3987,9 +4047,9 @@ function LibraryView({
             id: uid('trip_'),
             name: (data.name || 'Importada') + ' (importada)'
           });
-        } else alert('Formato desconhecido');
+        } else toast.error('Formato desconhecido');
       } catch {
-        alert('JSON inválido');
+        toast.error('JSON inválido');
       }
     };
     reader.readAsText(file);
@@ -4748,7 +4808,7 @@ function TripHeader({
   const share = async () => {
     const url = makeShareableUrl(trip);
     if (!url) {
-      alert('Erro ao gerar link.');
+      toast.error('Erro ao gerar link.');
       return;
     }
     if (url.length > 8000) {
@@ -4923,6 +4983,7 @@ function MembersModal({
       if (error) throw error;
       setEmail('');
       await loadInvites();
+      toast.success(`Convite enviado para ${em}`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -7548,7 +7609,7 @@ function OptionCard({
       await setVote(option.id, user.id, myVote === v ? null : v);
       refetchActive();
     } catch (e) {
-      alert('Erro ao votar: ' + e.message);
+      toast.error('Erro ao votar: ' + e.message);
     } finally {
       setBusy(false);
     }
@@ -7561,7 +7622,7 @@ function OptionCard({
       });
       refetchActive();
     } catch (e) {
-      alert('Erro: ' + e.message);
+      toast.error('Erro: ' + e.message);
     } finally {
       setBusy(false);
     }
@@ -7575,7 +7636,7 @@ function OptionCard({
       setCommentText('');
       refetchActive();
     } catch (e) {
-      alert('Erro: ' + e.message);
+      toast.error('Erro: ' + e.message);
     } finally {
       setBusy(false);
     }
@@ -7586,7 +7647,7 @@ function OptionCard({
       await deleteComment(id);
       refetchActive();
     } catch (e) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
   const memberOf = uid => trip.members?.find(m => m.userId === uid);
@@ -7799,7 +7860,7 @@ function OptionModal({
       refetchActive();
       onClose();
     } catch (e) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
   const geocodeLocation = async () => {
@@ -7811,9 +7872,9 @@ function OptionModal({
         ...f,
         lat: r.lat,
         lon: r.lon
-      });else alert('Não achei essa localização. Insira as coordenadas manualmente se souber.');
+      });else toast.error('Não achei essa localização. Insira as coordenadas manualmente se souber.');
     } catch (e) {
-      alert('Erro na busca: ' + e.message);
+      toast.error('Erro na busca: ' + e.message);
     } finally {
       setGeoBusy(false);
     }

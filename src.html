@@ -447,6 +447,63 @@ const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
+/* ==================== TOAST (helper global + host) ==================== */
+
+const _toastListeners = new Set();
+const toast = {
+  show: (message, opts = {}) => {
+    const evt = {
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Math.random()),
+      message, variant: opts.variant || 'info',
+      duration: opts.duration ?? (opts.variant === 'error' ? 5000 : 3000),
+    };
+    _toastListeners.forEach(fn => fn(evt));
+    return evt.id;
+  },
+  success: (m, o) => toast.show(m, { ...o, variant: 'success' }),
+  error:   (m, o) => toast.show(m, { ...o, variant: 'error' }),
+  info:    (m, o) => toast.show(m, { ...o, variant: 'info' }),
+};
+
+function ToastHost() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    const handler = (evt) => {
+      setItems(prev => [...prev, evt]);
+      if (evt.duration > 0) {
+        setTimeout(() => setItems(prev => prev.filter(x => x.id !== evt.id)), evt.duration);
+      }
+    };
+    _toastListeners.add(handler);
+    return () => _toastListeners.delete(handler);
+  }, []);
+  const dismiss = (id) => setItems(prev => prev.filter(x => x.id !== id));
+  return (
+    <div className="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2 pointer-events-none max-w-sm">
+      {items.map(t => (
+        <div key={t.id} onClick={() => dismiss(t.id)}
+          role="status"
+          className={cx(
+            'pointer-events-auto px-4 py-3 rounded-lg text-sm font-medium shadow-lg fade-in cursor-pointer border flex items-start gap-2',
+            t.variant === 'success' && 'bg-paper border-ok text-ink',
+            t.variant === 'error'   && 'bg-paper border-bad text-ink',
+            t.variant === 'info'    && 'bg-paper border-rule-2 text-ink',
+          )}
+          style={{ boxShadow: 'var(--shadow-lg)' }}>
+          <span className={cx('mt-0.5 text-base leading-none',
+            t.variant === 'success' && 'text-ok',
+            t.variant === 'error'   && 'text-bad',
+            t.variant === 'info'    && 'text-ink-3',
+          )}>
+            {t.variant === 'success' ? '✓' : t.variant === 'error' ? '✕' : 'ⓘ'}
+          </span>
+          <span className="flex-1 whitespace-pre-wrap">{t.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Remove duplicatas por id preservando ordem (primeiro ocorre wins). */
 function uniqueById(arr) {
   const seen = new Set();
@@ -1297,7 +1354,10 @@ async function acceptPendingInvites(user) {
   try {
     const { data, error } = await SB.rpc('accept_pending_invites');
     if (error) console.warn('accept_pending_invites RPC:', error.message);
-    else if (data && data > 0) accepted.push({ count: data, via: 'email' });
+    else if (data && data > 0) {
+      accepted.push({ count: data, via: 'email' });
+      toast.success(`Você entrou em ${data} viagem${data > 1 ? 's' : ''} nova${data > 1 ? 's' : ''}.`);
+    }
   } catch (e) { console.warn('accept RPC failed:', e); }
 
   // 2) Convite via URL ?invite=TOKEN
@@ -1306,7 +1366,7 @@ async function acceptPendingInvites(user) {
   if (token) {
     try {
       const { data: tripId, error } = await SB.rpc('accept_invite_token', { _token: token });
-      if (error) alert('Erro ao aceitar convite: ' + error.message);
+      if (error) toast.error('Erro ao aceitar convite: ' + error.message);
       else if (tripId) accepted.push({ tripId, via: 'token' });
     } catch (e) { console.warn('token RPC failed:', e); }
     params.delete('invite');
@@ -1567,7 +1627,7 @@ function StoreProvider({ children }) {
         setTrips(prev => uniqueById([{ ...created, myRole: 'owner' }, ...prev]));
         setActiveTripId(created.id);
         return created.id;
-      } catch (e) { console.error(e); setError(e.message); alert('Erro ao criar viagem: ' + e.message); return null; }
+      } catch (e) { console.error(e); setError(e.message); toast.error('Erro ao criar viagem: ' + e.message); return null; }
     },
 
     removeTrip: async (id) => {
@@ -1579,7 +1639,7 @@ function StoreProvider({ children }) {
           if (activeTripId === id) setActiveTripId(next[0]?.id || null);
           return next;
         });
-      } catch (e) { console.error(e); alert('Erro ao apagar: ' + e.message); }
+      } catch (e) { console.error(e); toast.error('Erro ao apagar: ' + e.message); }
     },
 
     refetchList, refetchActive,
@@ -1624,8 +1684,8 @@ function StoreProvider({ children }) {
       setMigrationPrompt(null);
       localStorage.setItem('migration_done_v1', 'true');
       const failed = results.filter(r => !r.ok);
-      if (failed.length === 0) alert(`✓ ${results.length} viagem(s) importada(s) com sucesso.`);
-      else alert(`Importadas ${results.length - failed.length}/${results.length}. Falhas:\n${failed.map(f => `- ${f.name}: ${f.error}`).join('\n')}`);
+      if (failed.length === 0) toast.success(`${results.length} viagem(s) importada(s).`);
+      else toast.error(`Importadas ${results.length - failed.length}/${results.length}. Falhas:\n${failed.map(f => `- ${f.name}: ${f.error}`).join('\n')}`);
     },
   }), [trips, tripsById, activeTripId, loading, saving, error, user, refetchActive, refetchList, migrationPrompt]);
 
@@ -1957,15 +2017,18 @@ function App() {
     );
   }
   return (
-    <AuthProvider>
-      <AuthGate>
-        <StoreProvider>
-          <StoreGate>
-            <AppShell />
-          </StoreGate>
-        </StoreProvider>
-      </AuthGate>
-    </AuthProvider>
+    <>
+      <AuthProvider>
+        <AuthGate>
+          <StoreProvider>
+            <StoreGate>
+              <AppShell />
+            </StoreGate>
+          </StoreProvider>
+        </AuthGate>
+      </AuthProvider>
+      <ToastHost />
+    </>
   );
 }
 
@@ -2635,8 +2698,8 @@ function LibraryView({ onOpen, onClose, onConvert }) {
         } else if (data.id && data.days) {
           // Viagem única
           addTrip({ ...data, id: uid('trip_'), name: (data.name||'Importada') + ' (importada)' });
-        } else alert('Formato desconhecido');
-      } catch { alert('JSON inválido'); }
+        } else toast.error('Formato desconhecido');
+      } catch { toast.error('JSON inválido'); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -3107,7 +3170,7 @@ function TripHeader({ trip, daysToGo }) {
 
   const share = async () => {
     const url = makeShareableUrl(trip);
-    if (!url) { alert('Erro ao gerar link.'); return; }
+    if (!url) { toast.error('Erro ao gerar link.'); return; }
     if (url.length > 8000) {
       const ok = confirm(`O link ficou grande (${(url.length/1024).toFixed(1)}KB). Alguns apps podem cortar. Copiar mesmo assim?`);
       if (!ok) return;
@@ -3224,6 +3287,7 @@ function MembersModal({ open, onClose, trip }) {
       if (error) throw error;
       setEmail('');
       await loadInvites();
+      toast.success(`Convite enviado para ${em}`);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -4740,14 +4804,14 @@ function OptionCard({ trip, option, onEdit }) {
     if (busy) return;
     setBusy(true);
     try { await setVote(option.id, user.id, myVote === v ? null : v); refetchActive(); }
-    catch (e) { alert('Erro ao votar: ' + e.message); }
+    catch (e) { toast.error('Erro ao votar: ' + e.message); }
     finally { setBusy(false); }
   };
 
   const handleStatusChange = async (newStatus) => {
     setBusy(true);
     try { await updateOptionRow(option.id, { status: newStatus }); refetchActive(); }
-    catch (e) { alert('Erro: ' + e.message); }
+    catch (e) { toast.error('Erro: ' + e.message); }
     finally { setBusy(false); }
   };
 
@@ -4758,13 +4822,13 @@ function OptionCard({ trip, option, onEdit }) {
     try {
       await addComment(option.id, user.id, commentText.trim());
       setCommentText(''); refetchActive();
-    } catch (e) { alert('Erro: ' + e.message); }
+    } catch (e) { toast.error('Erro: ' + e.message); }
     finally { setBusy(false); }
   };
 
   const handleDeleteComment = async (id) => {
     if (!confirm('Apagar este comentário?')) return;
-    try { await deleteComment(id); refetchActive(); } catch (e) { alert(e.message); }
+    try { await deleteComment(id); refetchActive(); } catch (e) { toast.error(e.message); }
   };
 
   const memberOf = (uid) => trip.members?.find(m => m.userId === uid);
@@ -4899,7 +4963,7 @@ function OptionModal({ trip, option, onClose }) {
 
   const del = async () => {
     if (!confirm('Apagar essa opção?')) return;
-    try { await deleteOptionRow(option.id); refetchActive(); onClose(); } catch (e) { alert(e.message); }
+    try { await deleteOptionRow(option.id); refetchActive(); onClose(); } catch (e) { toast.error(e.message); }
   };
 
   const geocodeLocation = async () => {
@@ -4908,8 +4972,8 @@ function OptionModal({ trip, option, onClose }) {
     try {
       const r = await geocode(f.location.trim());
       if (r) setF({ ...f, lat: r.lat, lon: r.lon });
-      else alert('Não achei essa localização. Insira as coordenadas manualmente se souber.');
-    } catch (e) { alert('Erro na busca: ' + e.message); }
+      else toast.error('Não achei essa localização. Insira as coordenadas manualmente se souber.');
+    } catch (e) { toast.error('Erro na busca: ' + e.message); }
     finally { setGeoBusy(false); }
   };
 

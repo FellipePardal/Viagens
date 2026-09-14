@@ -3282,6 +3282,68 @@ function Sidebar({
     size: 17
   }), /*#__PURE__*/React.createElement("span", null, "C\xE2mbio")), /*#__PURE__*/React.createElement(UserMenu, null)));
 }
+function UserMenuCompact() {
+  const {
+    user,
+    profile,
+    signOut
+  } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [pwModal, setPwModal] = useState(false);
+  const btnRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = e => {
+      if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+  if (!user) return null;
+  const name = profile?.full_name || user.email?.split('@')[0] || 'Você';
+  const initial = (name[0] || 'U').toUpperCase();
+  return /*#__PURE__*/React.createElement("div", {
+    className: "relative",
+    ref: btnRef
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setOpen(v => !v),
+    className: "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-transparent hover:border-ink transition-colors",
+    style: {
+      background: profile?.color || 'var(--ink-2)'
+    },
+    title: user.email
+  }, profile?.avatar_url ? /*#__PURE__*/React.createElement("img", {
+    src: profile.avatar_url,
+    className: "w-full h-full rounded-full object-cover",
+    alt: ""
+  }) : initial), open && /*#__PURE__*/React.createElement("div", {
+    className: "absolute right-0 top-full mt-2 min-w-[240px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50",
+    style: {
+      boxShadow: 'var(--shadow-lg)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-3 border-b border-rule"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-sm font-semibold truncate"
+  }, name), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-ink-3 truncate"
+  }, user.email)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setOpen(false);
+      setPwModal(true);
+    },
+    className: "w-full text-left px-4 py-3 hover:bg-paper-2 text-sm font-semibold border-b border-rule"
+  }, "Definir / alterar senha"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setOpen(false);
+      signOut();
+    },
+    className: "w-full text-left px-4 py-3 hover:bg-paper-2 text-sm text-bad font-semibold"
+  }, "Sair")), /*#__PURE__*/React.createElement(SetPasswordModal, {
+    open: pwModal,
+    onClose: () => setPwModal(false)
+  }));
+}
 function UserMenu() {
   const {
     user,
@@ -3377,7 +3439,7 @@ function MobileTopBar({
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "library",
     size: 16
-  })))));
+  })), /*#__PURE__*/React.createElement(UserMenuCompact, null))));
 }
 function MobileBottomNav({
   tab,
@@ -3593,7 +3655,7 @@ function LibraryView({
     size: "sm",
     icon: "plus",
     onClick: () => setWizardOpen(true)
-  }, "Nova viagem"))), /*#__PURE__*/React.createElement("div", {
+  }, "Nova viagem"), /*#__PURE__*/React.createElement(UserMenuCompact, null))), /*#__PURE__*/React.createElement("div", {
     className: "max-w-3xl"
   }, /*#__PURE__*/React.createElement("h1", {
     className: "text-4xl sm:text-5xl lg:text-6xl font-black text-ink leading-tight tracking-tight"

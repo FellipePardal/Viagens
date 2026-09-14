@@ -1646,24 +1646,25 @@ function Modal({ open, onClose, children, title, footer, size = 'md' }) {
   }, [open, onClose]);
   if (!open) return null;
   const width = size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : size === 'xl' ? 'max-w-5xl' : 'max-w-xl';
-  return (
-    <div className="fixed inset-0 z-50 overlay-in" style={{ backgroundColor: 'rgba(15,26,36,0.55)' }} onClick={onClose}>
-      <div className="min-h-full flex items-start sm:items-center justify-center p-3 sm:p-6">
-        <div className={cx('w-full bg-paperx border border-ink fade-in', width)}
-             style={{boxShadow: '6px 6px 0 var(--ink)', borderRadius: 2}}
+  const el = (
+    <div className="fixed inset-0 overlay-in" style={{ backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999 }} onClick={onClose}>
+      <div className="min-h-full flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div className={cx('w-full bg-white fade-in rounded-2xl overflow-hidden', width)}
+             style={{boxShadow: '0 20px 60px rgba(0,0,0,0.35)'}}
              onClick={e => e.stopPropagation()}>
           {title && (
-            <div className="hairline-solid px-5 py-4 flex items-center justify-between bg-paper/40">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-rule">
               <h2 className="text-lg font-bold text-ink">{title}</h2>
               <IconButton icon="x" onClick={onClose} />
             </div>
           )}
           <div className="px-5 py-5">{children}</div>
-          {footer && <div className="border-t border-rule px-5 py-3 flex items-center justify-end gap-2 bg-paper/40">{footer}</div>}
+          {footer && <div className="border-t border-rule px-5 py-3 flex items-center justify-end gap-2 bg-paper-2/40">{footer}</div>}
         </div>
       </div>
     </div>
   );
+  return ReactDOM.createPortal(el, document.body);
 }
 
 function Confirm({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirmar', variant = 'primary' }) {

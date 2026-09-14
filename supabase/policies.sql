@@ -29,9 +29,11 @@ for update using (id = auth.uid());
 -- TRIPS -------------------------------------------------------
 alter table public.trips enable row level security;
 
+-- Owner sempre pode ver e editar direto (evita bug do INSERT ... RETURNING
+-- avaliar SELECT policy antes do trigger AFTER inserir em trip_members).
 drop policy if exists "trips_select_members" on public.trips;
 create policy "trips_select_members" on public.trips
-for select using (public.is_trip_member(id));
+for select using (owner_id = auth.uid() or public.is_trip_member(id));
 
 drop policy if exists "trips_insert_own" on public.trips;
 create policy "trips_insert_own" on public.trips
@@ -39,7 +41,7 @@ for insert with check (owner_id = auth.uid());
 
 drop policy if exists "trips_update_members" on public.trips;
 create policy "trips_update_members" on public.trips
-for update using (public.is_trip_member(id));
+for update using (owner_id = auth.uid() or public.is_trip_member(id));
 
 drop policy if exists "trips_delete_owner" on public.trips;
 create policy "trips_delete_owner" on public.trips

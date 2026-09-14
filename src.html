@@ -5132,6 +5132,8 @@ function QuoteModal({ trip, quote, onClose }) {
 /* ==================== SPLIT TAB ==================== */
 
 function SplitTab({ trip, fx }) {
+  const [quickOpen, setQuickOpen] = useState(false);
+
   if (trip.travelers.length === 0) {
     return <EmptyState icon="users" title="Nenhum companheiro cadastrado" description="Adicione companheiros nas configurações da viagem para dividir despesas." />;
   }
@@ -5161,6 +5163,12 @@ function SplitTab({ trip, fx }) {
   const settlements = settleBalances(balances);
 
   return (
+    <div>
+      <SectionHeader
+        eyebrow="Divisão de despesas"
+        title="Quem deve quem"
+        action={<Button variant="accent" size="sm" icon="plus" onClick={() => setQuickOpen(true)}>Nova despesa</Button>}
+      />
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="card p-5">
         <h3 className="text-sm font-semibold text-ink mb-3">Balanço</h3>
@@ -5195,7 +5203,7 @@ function SplitTab({ trip, fx }) {
 
       <div className="card p-5">
         <h3 className="text-sm font-semibold text-ink mb-3">Despesas divididas ({rows.length})</h3>
-        {rows.length === 0 ? <p className="text-xs text-inkm">Marque "quem pagou" nos blocos do roteiro para começar a dividir.</p> : (
+        {rows.length === 0 ? <p className="text-xs text-ink-3">Sem despesas divididas ainda. Clica em <b>Nova despesa</b> ou marca "quem pagou" nos blocos do roteiro.</p> : (
           <ul className="space-y-2 max-h-[500px] overflow-y-auto">
             {rows.slice().reverse().map((r, i) => {
               const p = trip.travelers.find(t => t.id === r.payer);
@@ -5215,6 +5223,102 @@ function SplitTab({ trip, fx }) {
         )}
       </div>
     </div>
+      {quickOpen && <QuickExpenseModal trip={trip} onClose={() => setQuickOpen(false)} />}
+    </div>
+  );
+}
+
+function QuickExpenseModal({ trip, onClose }) {
+  const { updateTrip } = useStore();
+  const { user } = useAuth();
+  const today = isoToday();
+  // Escolhe dia default: dia atual se cai na viagem, ou primeiro dia
+  const defaultDay = trip.days?.find(d => d.date === today) || trip.days?.[0];
+  const myTraveler = trip.travelers?.find(t => t.linkedUserId === user?.id);
+
+  const [title, setTitle] = useState('');
+  const [cost, setCost] = useState('');
+  const [currency, setCurrency] = useState(trip.baseCurrency);
+  const [dayId, setDayId] = useState(defaultDay?.id || '');
+  const [paidBy, setPaidBy] = useState(myTraveler?.id || trip.travelers?.[0]?.id || '');
+  const [split, setSplit] = useState(trip.travelers?.map(t => t.id) || []);
+  const [busy, setBusy] = useState(false);
+
+  const toggleSplit = (id) => setSplit(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+
+  const save = async () => {
+    if (!title.trim() || !cost || !dayId || !paidBy) return;
+    setBusy(true);
+    try {
+      const newBlock = makeBlock({
+        title: title.trim(),
+        cost: Number(cost),
+        currency,
+        paidBy,
+        splitBetween: split.length > 0 ? split : null,
+      });
+      await updateTrip(trip.id, t => ({
+        ...t,
+        days: t.days.map(d => d.id === dayId ? { ...d, blocks: [...d.blocks, newBlock] } : d)
+      }));
+      toast.success('Despesa registrada — aparece na divisão');
+      onClose();
+    } catch (e) { toast.error('Erro: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const valid = title.trim() && cost && dayId && paidBy;
+  const shareEach = cost && split.length ? Number(cost) / split.length : 0;
+
+  return (
+    <Modal open onClose={onClose} title="Nova despesa pra dividir" size="md"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="accent" onClick={save} disabled={!valid || busy}>{busy ? 'Salvando…' : 'Registrar'}</Button></>}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
+          <Label>O que foi</Label>
+          <TextInput value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Jantar no La Bourgogne" autoFocus />
+        </div>
+        <div>
+          <Label>Valor total</Label>
+          <CurrencyInput value={cost} onChange={e => setCost(e.target.value)} currency={currency} />
+        </div>
+        <div>
+          <Label>Moeda</Label>
+          <Select value={currency} onChange={e => setCurrency(e.target.value)}>
+            {[trip.baseCurrency, ...trip.secondaryCurrencies].filter((c, i, a) => a.indexOf(c) === i).map(c => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </div>
+        <div>
+          <Label>Dia</Label>
+          <Select value={dayId} onChange={e => setDayId(e.target.value)}>
+            {(trip.days || []).map((d, i) => (
+              <option key={d.id} value={d.id}>Dia {i + 1} — {fmtDate(d.date)}</option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label>Quem pagou</Label>
+          <Select value={paidBy} onChange={e => setPaidBy(e.target.value)}>
+            {(trip.travelers || []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </Select>
+        </div>
+        <div className="sm:col-span-2">
+          <Label hint={`${split.length} pessoa(s) · ${fmtMoney(shareEach, currency)} cada`}>Dividir entre</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {(trip.travelers || []).map(t => {
+              const on = split.includes(t.id);
+              return (
+                <button key={t.id} type="button" onClick={() => toggleSplit(t.id)}
+                  className={cx('chip cursor-pointer', on ? 'chip-ink' : '')}
+                  style={on ? {borderColor: t.color, background: t.color + '22', color: t.color} : {}}>
+                  {t.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

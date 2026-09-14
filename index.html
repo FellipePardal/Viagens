@@ -4016,27 +4016,18 @@ function Sidebar({
   const cityCode = destCode(trip.destination) || 'TRP';
   return /*#__PURE__*/React.createElement("aside", {
     className: "hidden lg:flex flex-col w-[280px] h-screen sticky top-0 border-r border-rule bg-paperx/40 no-print relative z-20"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "p-5 flex items-center gap-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg",
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onOpenLibrary,
+    className: "px-4 pt-4 pb-2 flex items-center gap-2 text-left hover:opacity-70 transition-opacity",
+    title: "Voltar para biblioteca"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-6 h-6 rounded-md flex items-center justify-center text-white font-bold text-xs",
     style: {
       background: 'var(--accent)'
     }
-  }, "P"), /*#__PURE__*/React.createElement("div", {
-    className: "flex-1 min-w-0"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-base font-bold leading-none"
-  }, "Passageiro"), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-ink-3 mt-0.5"
-  }, "planejador de viagens")), /*#__PURE__*/React.createElement("button", {
-    onClick: onConvert,
-    className: "text-ink-3 hover:text-ink p-1 rounded-lg hover:bg-paper-2",
-    title: "Conversor de c\xE2mbio"
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "refresh",
-    size: 16
-  }))), /*#__PURE__*/React.createElement("div", {
+  }, "P"), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-semibold uppercase tracking-wider text-ink-3"
+  }, "Passageiro")), /*#__PURE__*/React.createElement("div", {
     className: "mx-3 relative"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setSwitcherOpen(v => !v),

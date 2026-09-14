@@ -2734,16 +2734,10 @@ function Sidebar({ trip, tab, onTab, onOpenLibrary, onConvert }) {
 
   return (
     <aside className="hidden lg:flex flex-col w-[280px] h-screen sticky top-0 border-r border-rule bg-paperx/40 no-print relative z-20">
-      <div className="p-5 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{background: 'var(--accent)'}}>P</div>
-        <div className="flex-1 min-w-0">
-          <div className="text-base font-bold leading-none">Passageiro</div>
-          <div className="text-xs text-ink-3 mt-0.5">planejador de viagens</div>
-        </div>
-        <button onClick={onConvert} className="text-ink-3 hover:text-ink p-1 rounded-lg hover:bg-paper-2" title="Conversor de câmbio">
-          <Icon name="refresh" size={16} />
-        </button>
-      </div>
+      <button onClick={onOpenLibrary} className="px-4 pt-4 pb-2 flex items-center gap-2 text-left hover:opacity-70 transition-opacity" title="Voltar para biblioteca">
+        <span className="w-6 h-6 rounded-md flex items-center justify-center text-white font-bold text-xs" style={{background: 'var(--accent)'}}>P</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-ink-3">Passageiro</span>
+      </button>
 
       <div className="mx-3 relative">
         <button onClick={() => setSwitcherOpen(v => !v)} className="w-full text-left p-3 rounded-xl border border-rule hover:border-ink-3 transition-colors bg-paper">

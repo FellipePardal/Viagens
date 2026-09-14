@@ -1832,32 +1832,53 @@ function MentionInput({ value, onChange, onSubmit, members, placeholder = 'Comen
 
 /* ==================== TRIP PRESENCE (Supabase Realtime) ==================== */
 
+// Cache global: 1 channel por trip, compartilhado entre múltiplos componentes
+const _presenceCache = new Map(); // tripId -> { channel, subscribers: Set<fn>, online: {} }
+
 function useTripPresence(tripId, me) {
-  const [online, setOnline] = useState({}); // userId -> { at, tab, name }
+  const [online, setOnline] = useState({});
   useEffect(() => {
     if (!tripId || !me || !SB) return;
-    const channel = SB.channel(`presence-trip-${tripId}`, {
-      config: { presence: { key: me.userId } }
-    });
-    const rebuild = () => {
-      const state = channel.presenceState();
-      const next = {};
-      Object.entries(state).forEach(([uid, arr]) => {
-        const last = arr[arr.length - 1];
-        if (last) next[uid] = last;
+    let entry = _presenceCache.get(tripId);
+    if (!entry) {
+      entry = { subscribers: new Set(), online: {}, channel: null };
+      _presenceCache.set(tripId, entry);
+      const channel = SB.channel(`presence-trip-${tripId}`, {
+        config: { presence: { key: me.userId } }
       });
-      setOnline(next);
+      entry.channel = channel;
+      const rebuild = () => {
+        const state = channel.presenceState();
+        const next = {};
+        Object.entries(state).forEach(([uid, arr]) => {
+          const last = arr[arr.length - 1];
+          if (last) next[uid] = last;
+        });
+        entry.online = next;
+        entry.subscribers.forEach(fn => fn(next));
+      };
+      channel
+        .on('presence', { event: 'sync' }, rebuild)
+        .on('presence', { event: 'join' }, rebuild)
+        .on('presence', { event: 'leave' }, rebuild)
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            try { await channel.track({ userId: me.userId, name: me.name, at: Date.now() }); }
+            catch {}
+          }
+        });
+    }
+    entry.subscribers.add(setOnline);
+    setOnline(entry.online);
+    return () => {
+      const e = _presenceCache.get(tripId);
+      if (!e) return;
+      e.subscribers.delete(setOnline);
+      if (e.subscribers.size === 0) {
+        try { SB.removeChannel(e.channel); } catch {}
+        _presenceCache.delete(tripId);
+      }
     };
-    channel
-      .on('presence', { event: 'sync' }, rebuild)
-      .on('presence', { event: 'join' }, rebuild)
-      .on('presence', { event: 'leave' }, rebuild)
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ userId: me.userId, name: me.name, at: Date.now() });
-        }
-      });
-    return () => { SB.removeChannel(channel); };
   }, [tripId, me?.userId]);
   return online;
 }

@@ -32,6 +32,11 @@ async function main() {
     await client.connect();
     console.log('OK — conectado\n');
 
+    // Captura NOTICE do plpgsql
+    client.on('notice', (msg) => {
+      console.log(`  📢 ${msg.message}`);
+    });
+
     for (const rel of files) {
       const filePath = path.resolve(rel);
       const name = path.basename(filePath);
@@ -39,8 +44,16 @@ async function main() {
       console.log(`▶ Rodando ${name} (${sql.length} chars)...`);
       const t0 = Date.now();
       try {
-        await client.query(sql);
-        console.log(`  ✓ OK em ${Date.now() - t0}ms\n`);
+        const res = await client.query(sql);
+        console.log(`  ✓ OK em ${Date.now() - t0}ms`);
+        // Se houver linhas retornadas, printa
+        const arr = Array.isArray(res) ? res : [res];
+        for (const r of arr) {
+          if (r && r.rows && r.rows.length > 0) {
+            console.table(r.rows);
+          }
+        }
+        console.log('');
       } catch (e) {
         console.error(`  ✗ ERRO em ${name}:`);
         console.error(`    ${e.message}`);

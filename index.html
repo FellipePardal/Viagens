@@ -6022,6 +6022,7 @@ function TripSettingsModal({
     updateTrip
   } = useStore();
   const [f, setF] = useState(trip);
+  const [resetting, setResetting] = useState(false);
   useEffect(() => {
     if (open) setF(trip);
   }, [open, trip]);
@@ -6033,6 +6034,34 @@ function TripSettingsModal({
       travelers: f.travelers
     }));
     onClose();
+  };
+  const resetCosts = async () => {
+    const nBlocks = trip.days.reduce((s, d) => s + d.blocks.filter(b => b.cost != null).length, 0);
+    const nCats = trip.categories.filter(c => (c.budgeted || 0) > 0).length;
+    if (!confirm(`Zerar TODOS os valores estimados desta viagem?\n\n• ${nBlocks} bloco(s) do roteiro terão custo removido\n• ${nCats} categoria(s) terão orçado zerado\n\nO roteiro (títulos, datas, notas) fica intacto.`)) return;
+    setResetting(true);
+    try {
+      await updateTrip(trip.id, t => ({
+        ...t,
+        days: t.days.map(d => ({
+          ...d,
+          blocks: d.blocks.map(b => ({
+            ...b,
+            cost: null
+          }))
+        })),
+        categories: t.categories.map(c => ({
+          ...c,
+          budgeted: 0
+        }))
+      }));
+      toast.success('Custos zerados. Roteiro preservado.');
+      onClose();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setResetting(false);
+    }
   };
   return /*#__PURE__*/React.createElement(Modal, {
     open: open,
@@ -6070,6 +6099,20 @@ function TripSettingsModal({
       className: cx('chip', on ? 'chip-ink' : '')
     }, c.code);
   }))), /*#__PURE__*/React.createElement("div", {
+    className: "hairline pt-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-2"
+  }, /*#__PURE__*/React.createElement(Label, {
+    className: "mb-0"
+  }, "Zerar valores estimados")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-ink-3 mb-2"
+  }, "Remove os custos dos blocos e or\xE7amentos das categorias (do template inicial). Mant\xE9m o roteiro, datas, notas e checklist intactos. \xDAtil pra come\xE7ar a preencher com valores reais."), /*#__PURE__*/React.createElement(Button, {
+    variant: "danger",
+    size: "sm",
+    icon: "trash",
+    onClick: resetCosts,
+    disabled: resetting
+  }, resetting ? 'Zerando…' : 'Zerar todos os custos e orçamentos')), /*#__PURE__*/React.createElement("div", {
     className: "hairline pt-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between mb-2"

@@ -4001,10 +4001,27 @@ function TripEditModal({ open, onClose, trip }) {
 function TripSettingsModal({ open, onClose, trip }) {
   const { updateTrip } = useStore();
   const [f, setF] = useState(trip);
+  const [resetting, setResetting] = useState(false);
   useEffect(() => { if (open) setF(trip); }, [open, trip]);
   const save = () => {
     updateTrip(trip.id, t => ({ ...t, baseCurrency: f.baseCurrency, secondaryCurrencies: f.secondaryCurrencies, travelers: f.travelers }));
     onClose();
+  };
+  const resetCosts = async () => {
+    const nBlocks = trip.days.reduce((s, d) => s + d.blocks.filter(b => b.cost != null).length, 0);
+    const nCats = trip.categories.filter(c => (c.budgeted || 0) > 0).length;
+    if (!confirm(`Zerar TODOS os valores estimados desta viagem?\n\n• ${nBlocks} bloco(s) do roteiro terão custo removido\n• ${nCats} categoria(s) terão orçado zerado\n\nO roteiro (títulos, datas, notas) fica intacto.`)) return;
+    setResetting(true);
+    try {
+      await updateTrip(trip.id, t => ({
+        ...t,
+        days: t.days.map(d => ({ ...d, blocks: d.blocks.map(b => ({ ...b, cost: null })) })),
+        categories: t.categories.map(c => ({ ...c, budgeted: 0 })),
+      }));
+      toast.success('Custos zerados. Roteiro preservado.');
+      onClose();
+    } catch (e) { toast.error(e.message); }
+    finally { setResetting(false); }
   };
   return (
     <Modal open={open} onClose={onClose} title="Configurações da viagem" size="lg"
@@ -4027,6 +4044,16 @@ function TripSettingsModal({ open, onClose, trip }) {
               );
             })}
           </div>
+        </div>
+
+        <div className="hairline pt-4">
+          <div className="mb-2">
+            <Label className="mb-0">Zerar valores estimados</Label>
+          </div>
+          <p className="text-xs text-ink-3 mb-2">Remove os custos dos blocos e orçamentos das categorias (do template inicial). Mantém o roteiro, datas, notas e checklist intactos. Útil pra começar a preencher com valores reais.</p>
+          <Button variant="danger" size="sm" icon="trash" onClick={resetCosts} disabled={resetting}>
+            {resetting ? 'Zerando…' : 'Zerar todos os custos e orçamentos'}
+          </Button>
         </div>
 
         <div className="hairline pt-4">

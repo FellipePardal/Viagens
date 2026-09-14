@@ -4789,9 +4789,10 @@ function OptionsTab({ trip }) {
 
 function OptionCard({ trip, option, onEdit }) {
   const { user } = useAuth();
-  const { refetchActive } = useStore();
+  const { refetchActive, updateTrip } = useStore();
   const [commentText, setCommentText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [addToRoteiroOpen, setAddToRoteiroOpen] = useState(false);
 
   const myVote = option.votes.find(v => v.userId === user?.id)?.vote || null;
   const counts = { up: 0, down: 0, love: 0 };
@@ -4873,6 +4874,20 @@ function OptionCard({ trip, option, onEdit }) {
 
         {option.notes && <p className="text-sm text-ink-2 mb-3 whitespace-pre-wrap">{option.notes}</p>}
 
+        {(option.status === 'preferred' || option.status === 'booked') && (
+          <div className="mb-3">
+            {option.linkedDayId && trip.days?.find(d => d.id === option.linkedDayId) ? (
+              <div className="chip chip-ok">
+                <Icon name="calendar" size={11} /> No roteiro do dia {fmtDate(trip.days.find(d => d.id === option.linkedDayId).date)}
+              </div>
+            ) : (
+              <Button size="xs" variant="secondary" icon="calendar" onClick={() => setAddToRoteiroOpen(true)}>
+                Adicionar ao roteiro
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Voting */}
         <div className="flex items-center gap-1 mb-3">
           <button onClick={() => handleVote('love')} disabled={busy} className={cx('flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border', myVote === 'love' ? 'bg-accents border-accent text-accent-d' : 'border-rule hover:border-ink')}>
@@ -4936,7 +4951,88 @@ function OptionCard({ trip, option, onEdit }) {
           <Button type="submit" size="sm" variant="primary" disabled={busy || !commentText.trim()}>Enviar</Button>
         </form>
       </div>
+      {addToRoteiroOpen && <AddOptionToItineraryModal trip={trip} option={option} onClose={() => setAddToRoteiroOpen(false)} />}
     </article>
+  );
+}
+
+/* Mapa tipo de opção → nome sugerido de categoria (heurística) */
+function categoryForOptionType(type, categories) {
+  const map = {
+    hotel:      ['hospedagem','hotel','pousada','airbnb'],
+    restaurant: ['aliment','restaurant','comida','food','janta','almoço','alimentação'],
+    activity:   ['passeio','atividade','tour','activity','ingresso'],
+    transport:  ['transporte','locomo','carro','uber','táxi','táxi','gasol','combust'],
+    flight:     ['voo','flight','aéreo','aereo','passagem'],
+    other:      ['extra','geral'],
+  };
+  const keys = map[type] || [];
+  for (const cat of (categories || [])) {
+    const n = (cat.name || '').toLowerCase();
+    if (keys.some(k => n.includes(k))) return cat.id;
+  }
+  return null;
+}
+
+function AddOptionToItineraryModal({ trip, option, onClose }) {
+  const { updateTrip } = useStore();
+  const [dayId, setDayId] = useState(trip.days?.[0]?.id || '');
+  const [time, setTime] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!dayId) return;
+    setBusy(true);
+    try {
+      const catId = categoryForOptionType(option.type, trip.categories);
+      const newBlock = makeBlock({
+        title: option.name,
+        time,
+        location: option.location || '',
+        cost: option.price != null ? option.price : null,
+        currency: option.currency || trip.baseCurrency,
+        categoryId: catId,
+        notes: option.notes || '',
+        link: option.link || '',
+      });
+      // Add block to day
+      await updateTrip(trip.id, t => ({
+        ...t,
+        days: t.days.map(d => d.id === dayId ? { ...d, blocks: [...d.blocks, newBlock] } : d)
+      }));
+      // Persistir linked_day_id na option
+      await updateOptionRow(option.id, { linkedDayId: dayId });
+      const dayLabel = trip.days.find(d => d.id === dayId);
+      toast.success(`Adicionado ao dia ${dayLabel ? fmtDate(dayLabel.date) : ''}`);
+      onClose();
+    } catch (e) { toast.error('Erro: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Adicionar ao roteiro" size="sm"
+      footer={<><Button onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={submit} disabled={busy || !dayId}>{busy ? 'Adicionando…' : 'Adicionar'}</Button></>}>
+      <div className="space-y-3">
+        <div className="text-sm text-ink-2">
+          Cria um bloco no dia escolhido com dados dessa opção:
+          <div className="mt-2 p-3 rounded-lg bg-paper-3 text-sm">
+            <div className="font-semibold">{option.name}</div>
+            {option.location && <div className="text-xs text-ink-3 mt-0.5">{option.location}</div>}
+            {option.price != null && <div className="text-xs font-mono mt-1">{fmtMoney(option.price, option.currency || trip.baseCurrency)}</div>}
+          </div>
+        </div>
+        <div><Label>Dia</Label>
+          <Select value={dayId} onChange={e => setDayId(e.target.value)}>
+            {(trip.days || []).map((d, i) => (
+              <option key={d.id} value={d.id}>Dia {i + 1} — {fmtDate(d.date)}{d.title ? ` · ${d.title}` : ''}</option>
+            ))}
+          </Select>
+        </div>
+        <div><Label hint="opcional">Hora</Label>
+          <TextInput type="time" value={time} onChange={e => setTime(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
   );
 }
 

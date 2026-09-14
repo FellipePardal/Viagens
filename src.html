@@ -1242,6 +1242,8 @@ function StoreProvider({ children }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [migrationPrompt, setMigrationPrompt] = useState(null);  // { trips: [...] }
+  const savingRef = useRef(0);
+  const lastSavedAtRef = useRef(0);
 
   // Load initial trips + pre-load full data em background
   useEffect(() => {
@@ -1318,10 +1320,13 @@ function StoreProvider({ children }) {
 
   const refetchActive = useCallback(async () => {
     if (!activeTripId) return;
+    // Ignora refetch se estou salvando (evita echo do meu proprio save)
+    if (savingRef.current > 0) return;
+    // Aguarda janela apos ultimo save (echo pode chegar depois do save)
+    if (Date.now() - lastSavedAtRef.current < 1500) return;
     try {
       const full = await fetchTripFull(activeTripId);
       setTripsById(m => ({ ...m, [activeTripId]: full }));
-      // Refresh list metadata too
       setTrips(prev => prev.map(t => t.id === activeTripId ? { ...t, ...full, categories: undefined, days: undefined } : t));
     } catch (e) { /* ignore */ }
   }, [activeTripId]);
@@ -1348,18 +1353,21 @@ function StoreProvider({ children }) {
       if (!current) { console.warn('updateTrip: trip não carregada:', id); return; }
       const next = updater(current);
       const withMeta = { ...next, updatedAt: new Date().toISOString() };
-      // Optimistic local update
       setTripsById(m => ({ ...m, [id]: withMeta }));
       setTrips(prev => prev.map(t => t.id === id ? { ...t, name: withMeta.name, destination: withMeta.destination, startDate: withMeta.startDate, endDate: withMeta.endDate, budgetCeiling: withMeta.budgetCeiling, archived: withMeta.archived } : t));
+      savingRef.current += 1;
       setSaving(true);
       try {
         await saveTripFull(withMeta, current);
+        lastSavedAtRef.current = Date.now();
       } catch (e) {
         console.error('Save falhou:', e);
         setError(e.message);
-        // Rollback
         setTripsById(m => ({ ...m, [id]: current }));
-      } finally { setSaving(false); }
+      } finally {
+        savingRef.current = Math.max(0, savingRef.current - 1);
+        setSaving(savingRef.current > 0);
+      }
     },
 
     addTrip: async (seed) => {
@@ -2380,6 +2388,7 @@ function destCode(destination) {
 /* ==================== LIBRARY ==================== */
 
 function LibraryView({ onOpen, onClose, onConvert }) {
+  const [inviteTrip, setInviteTrip] = useState(null);
   const { store, addTrip, removeTrip, updateTrip } = useStore();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -2504,6 +2513,7 @@ function LibraryView({ onOpen, onClose, onConvert }) {
                   onArchive={() => updateTrip(t.id, tt => ({ ...tt, archived: !tt.archived }))}
                   onExport={() => exportOne(t)}
                   onDelete={() => setConfirmDel(t)}
+                  onInvite={() => setInviteTrip(t)}
                 />
               </div>
             ))}
@@ -2512,6 +2522,8 @@ function LibraryView({ onOpen, onClose, onConvert }) {
       </main>
 
       <NewTripWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onCreate={async (trip) => { const id = await addTrip(trip); setWizardOpen(false); if (id) onOpen(id); }} existingTrips={store.trips} />
+
+      {inviteTrip && <MembersModal open={true} onClose={() => setInviteTrip(null)} trip={inviteTrip} />}
 
       <Confirm
         open={!!confirmDel}
@@ -2526,13 +2538,15 @@ function LibraryView({ onOpen, onClose, onConvert }) {
   );
 }
 
-function TripCard({ trip, onOpen, onDuplicate, onArchive, onExport, onDelete }) {
+function TripCard({ trip, onOpen, onDuplicate, onArchive, onExport, onDelete, onInvite }) {
+  const { user } = useAuth();
   const spent = tripSpent(trip);
   const nDays = daysBetween(trip.startDate, trip.endDate) + 1;
   const status = tripStatusChip(trip);
   const daysToGo = daysBetween(isoToday(), trip.startDate);
   const pctSpent = trip.budgetCeiling ? Math.min(100, (spent / trip.budgetCeiling) * 100) : 0;
   const overBudget = trip.budgetCeiling && spent > trip.budgetCeiling;
+  const isOwner = trip.ownerId === user?.id;
 
   return (
     <article className="card card-hover cursor-pointer overflow-hidden group" onClick={onOpen}>
@@ -2549,6 +2563,9 @@ function TripCard({ trip, onOpen, onDuplicate, onArchive, onExport, onDelete }) 
           <span className={cx('chip', status.cls)}>{status.text}</span>
         </div>
         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white/95 backdrop-blur rounded-full px-1 py-0.5 shadow-sm">
+          {isOwner && onInvite && (
+            <IconButton icon="users" onClick={(e) => { e.stopPropagation(); onInvite(); }} title="Convidar" />
+          )}
           <IconButton icon="duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicar" />
           <IconButton icon="archive" onClick={(e) => { e.stopPropagation(); onArchive(); }} title={trip.archived ? 'Desarquivar' : 'Arquivar'} />
           <IconButton icon="download" onClick={(e) => { e.stopPropagation(); onExport(); }} title="Exportar" />

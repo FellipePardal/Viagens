@@ -1702,6 +1702,8 @@ function StoreProvider({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [migrationPrompt, setMigrationPrompt] = useState(null); // { trips: [...] }
+  const savingRef = useRef(0);
+  const lastSavedAtRef = useRef(0);
 
   // Load initial trips + pre-load full data em background
   useEffect(() => {
@@ -1836,13 +1838,16 @@ function StoreProvider({
   }, [activeTripId]);
   const refetchActive = useCallback(async () => {
     if (!activeTripId) return;
+    // Ignora refetch se estou salvando (evita echo do meu proprio save)
+    if (savingRef.current > 0) return;
+    // Aguarda janela apos ultimo save (echo pode chegar depois do save)
+    if (Date.now() - lastSavedAtRef.current < 1500) return;
     try {
       const full = await fetchTripFull(activeTripId);
       setTripsById(m => ({
         ...m,
         [activeTripId]: full
       }));
-      // Refresh list metadata too
       setTrips(prev => prev.map(t => t.id === activeTripId ? {
         ...t,
         ...full,
@@ -1884,7 +1889,6 @@ function StoreProvider({
         ...next,
         updatedAt: new Date().toISOString()
       };
-      // Optimistic local update
       setTripsById(m => ({
         ...m,
         [id]: withMeta
@@ -1898,19 +1902,21 @@ function StoreProvider({
         budgetCeiling: withMeta.budgetCeiling,
         archived: withMeta.archived
       } : t));
+      savingRef.current += 1;
       setSaving(true);
       try {
         await saveTripFull(withMeta, current);
+        lastSavedAtRef.current = Date.now();
       } catch (e) {
         console.error('Save falhou:', e);
         setError(e.message);
-        // Rollback
         setTripsById(m => ({
           ...m,
           [id]: current
         }));
       } finally {
-        setSaving(false);
+        savingRef.current = Math.max(0, savingRef.current - 1);
+        setSaving(savingRef.current > 0);
       }
     },
     addTrip: async seed => {
@@ -3626,6 +3632,7 @@ function LibraryView({
   onClose,
   onConvert
 }) {
+  const [inviteTrip, setInviteTrip] = useState(null);
   const {
     store,
     addTrip,
@@ -3804,7 +3811,8 @@ function LibraryView({
       archived: !tt.archived
     })),
     onExport: () => exportOne(t),
-    onDelete: () => setConfirmDel(t)
+    onDelete: () => setConfirmDel(t),
+    onInvite: () => setInviteTrip(t)
   }))))), /*#__PURE__*/React.createElement(NewTripWizard, {
     open: wizardOpen,
     onClose: () => setWizardOpen(false),
@@ -3814,6 +3822,10 @@ function LibraryView({
       if (id) onOpen(id);
     },
     existingTrips: store.trips
+  }), inviteTrip && /*#__PURE__*/React.createElement(MembersModal, {
+    open: true,
+    onClose: () => setInviteTrip(null),
+    trip: inviteTrip
   }), /*#__PURE__*/React.createElement(Confirm, {
     open: !!confirmDel,
     onClose: () => setConfirmDel(null),
@@ -3830,14 +3842,19 @@ function TripCard({
   onDuplicate,
   onArchive,
   onExport,
-  onDelete
+  onDelete,
+  onInvite
 }) {
+  const {
+    user
+  } = useAuth();
   const spent = tripSpent(trip);
   const nDays = daysBetween(trip.startDate, trip.endDate) + 1;
   const status = tripStatusChip(trip);
   const daysToGo = daysBetween(isoToday(), trip.startDate);
   const pctSpent = trip.budgetCeiling ? Math.min(100, spent / trip.budgetCeiling * 100) : 0;
   const overBudget = trip.budgetCeiling && spent > trip.budgetCeiling;
+  const isOwner = trip.ownerId === user?.id;
   return /*#__PURE__*/React.createElement("article", {
     className: "card card-hover cursor-pointer overflow-hidden group",
     onClick: onOpen
@@ -3861,7 +3878,14 @@ function TripCard({
     className: cx('chip', status.cls)
   }, status.text)), /*#__PURE__*/React.createElement("div", {
     className: "absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white/95 backdrop-blur rounded-full px-1 py-0.5 shadow-sm"
-  }, /*#__PURE__*/React.createElement(IconButton, {
+  }, isOwner && onInvite && /*#__PURE__*/React.createElement(IconButton, {
+    icon: "users",
+    onClick: e => {
+      e.stopPropagation();
+      onInvite();
+    },
+    title: "Convidar"
+  }), /*#__PURE__*/React.createElement(IconButton, {
     icon: "duplicate",
     onClick: e => {
       e.stopPropagation();

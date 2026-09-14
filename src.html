@@ -4015,17 +4015,52 @@ function MapTab({ trip }) {
   const mapInstance = useRef(null);
   const markersLayer = useRef(null);
   const [adding, setAdding] = useState(false);
+  const [tilesFailing, setTilesFailing] = useState(false);
 
   useEffect(() => {
     if (!window.L || !mapRef.current || mapInstance.current) return;
     const map = window.L.map(mapRef.current, { zoomControl: true, attributionControl: false }).setView([-15, -55], 3);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+
+    // Tile layer com fallback: tenta CartoDB, cai pra OSM se falhar
+    let tileErrors = 0;
+    const tiles = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
       subdomains: 'abcd', maxZoom: 19,
-    }).addTo(map);
+      crossOrigin: true,
+    });
+    tiles.on('tileerror', () => {
+      tileErrors++;
+      if (tileErrors > 3 && !map._fallbackApplied) {
+        map._fallbackApplied = true;
+        console.warn('CartoDB tiles falhando, migrando para OpenStreetMap');
+        map.removeLayer(tiles);
+        window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          crossOrigin: true,
+        }).addTo(map);
+      }
+    });
+    tiles.addTo(map);
+
     window.L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap · Carto').addTo(map);
     mapInstance.current = map;
     markersLayer.current = window.L.layerGroup().addTo(map);
-    return () => { map.remove(); mapInstance.current = null; };
+
+    // Força invalidateSize logo depois da mount (resolve container 0x0)
+    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.invalidateSize(), 500);
+
+    // Observa resize do container
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => map.invalidateSize());
+      ro.observe(mapRef.current);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      map.remove();
+      mapInstance.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -4059,7 +4094,7 @@ function MapTab({ trip }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       <div className="lg:col-span-3">
-        <div ref={mapRef} className="rounded-lg border border-line" style={{ height: 480 }}></div>
+        <div ref={mapRef} className="rounded-lg border border-rule bg-paper-2" style={{ height: 480, minHeight: 480 }}></div>
       </div>
       <div className="lg:col-span-2 card p-5">
         <div className="flex items-center justify-between mb-3">

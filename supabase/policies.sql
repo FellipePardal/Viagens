@@ -84,6 +84,56 @@ for all using (
   )
 );
 
+-- ACCEPT INVITE RPC (SECURITY DEFINER) ----------------------
+-- Permitem que um user aceite convites feitos ao seu email
+-- sem bater na policy `trip_members_manage_owner` (que só permite dono inserir).
+
+CREATE OR REPLACE FUNCTION public.accept_pending_invites()
+RETURNS int LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  my_email text; cnt int := 0; r record;
+BEGIN
+  SELECT email INTO my_email FROM auth.users WHERE id = auth.uid();
+  IF my_email IS NULL THEN RETURN 0; END IF;
+  FOR r IN
+    SELECT id, trip_id, role FROM public.trip_invites
+    WHERE lower(invited_email) = lower(my_email)
+      AND accepted = false
+      AND (expires_at IS NULL OR expires_at > now())
+  LOOP
+    INSERT INTO public.trip_members (trip_id, user_id, role)
+    VALUES (r.trip_id, auth.uid(), COALESCE(r.role, 'editor'))
+    ON CONFLICT (trip_id, user_id) DO NOTHING;
+    UPDATE public.trip_invites SET accepted = true WHERE id = r.id;
+    cnt := cnt + 1;
+  END LOOP;
+  RETURN cnt;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.accept_pending_invites() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.accept_invite_token(_token text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE inv record; my_email text;
+BEGIN
+  SELECT email INTO my_email FROM auth.users WHERE id = auth.uid();
+  IF my_email IS NULL THEN RETURN NULL; END IF;
+  SELECT * INTO inv FROM public.trip_invites
+    WHERE token = _token AND accepted = false
+      AND (expires_at IS NULL OR expires_at > now());
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF lower(inv.invited_email) != lower(my_email) THEN
+    RAISE EXCEPTION 'Convite endereçado a outro email (%). Faça login com esse email.', inv.invited_email;
+  END IF;
+  INSERT INTO public.trip_members (trip_id, user_id, role)
+  VALUES (inv.trip_id, auth.uid(), COALESCE(inv.role, 'editor'))
+  ON CONFLICT (trip_id, user_id) DO NOTHING;
+  UPDATE public.trip_invites SET accepted = true WHERE id = inv.id;
+  RETURN inv.trip_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.accept_invite_token(text) TO authenticated;
+
 -- TRIP INVITES -----------------------------------------------
 alter table public.trip_invites enable row level security;
 

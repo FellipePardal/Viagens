@@ -1404,6 +1404,22 @@ function StoreProvider({ children }) {
 
     refetchList, refetchActive,
 
+    // Contatos = pessoas que já são membros de qualquer viagem sua (menos você)
+    myContacts: (() => {
+      const seen = new Set();
+      const out = [];
+      trips.forEach(t => {
+        const full = tripsById[t.id];
+        (full?.members || []).forEach(m => {
+          if (!m.userId || m.userId === user?.id) return;
+          if (seen.has(m.userId)) return;
+          seen.add(m.userId);
+          out.push(m);
+        });
+      });
+      return out.sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+    })(),
+
     migrationPrompt,
     dismissMigration: () => {
       setMigrationPrompt(null);
@@ -2968,7 +2984,7 @@ function MembersAvatars({ trip, onClick }) {
 
 function MembersModal({ open, onClose, trip }) {
   const { user } = useAuth();
-  const { refetchActive } = useStore();
+  const { refetchActive, myContacts } = useStore();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('editor');
   const [invites, setInvites] = useState([]);
@@ -2977,6 +2993,11 @@ function MembersModal({ open, onClose, trip }) {
   const [copiedToken, setCopiedToken] = useState(null);
 
   const isOwner = trip.ownerId === user?.id;
+  const memberEmails = new Set((trip.members || []).map(m => m.email?.toLowerCase()).filter(Boolean));
+  const invitedEmails = new Set(invites.map(i => i.invited_email?.toLowerCase()).filter(Boolean));
+  const suggestedContacts = (myContacts || []).filter(c =>
+    c.email && !memberEmails.has(c.email.toLowerCase()) && !invitedEmails.has(c.email.toLowerCase())
+  );
 
   const loadInvites = useCallback(async () => {
     if (!open || !isOwner) return;
@@ -2986,23 +3007,25 @@ function MembersModal({ open, onClose, trip }) {
 
   useEffect(() => { loadInvites(); }, [loadInvites]);
 
-  const invite = async (e) => {
-    e.preventDefault();
-    const em = email.trim().toLowerCase();
+  const doInvite = async (targetEmail, targetRole = role) => {
+    const em = (targetEmail || '').trim().toLowerCase();
     if (!em) return;
-    if (trip.members?.some(m => m.email?.toLowerCase() === em)) {
-      setError('Essa pessoa já é membro.'); return;
-    }
+    if (memberEmails.has(em)) { setError('Essa pessoa já é membro.'); return; }
     setLoading(true); setError('');
     try {
       const { error } = await SB.from('trip_invites').insert({
-        trip_id: trip.id, invited_email: em, role, invited_by: user.id,
+        trip_id: trip.id, invited_email: em, role: targetRole, invited_by: user.id,
       });
       if (error) throw error;
       setEmail('');
       await loadInvites();
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
+  };
+
+  const invite = async (e) => {
+    e.preventDefault();
+    await doInvite(email);
   };
 
   const revoke = async (id) => {
@@ -3066,6 +3089,27 @@ function MembersModal({ open, onClose, trip }) {
               </form>
               {error && <div className="text-xs text-bad mt-2">{error}</div>}
               <p className="text-xs text-ink-3 mt-2">A pessoa entra com esse email e acessa a viagem automaticamente. Se ela não tem conta, também pode compartilhar o link do convite abaixo.</p>
+
+              {suggestedContacts.length > 0 && (
+                <div className="mt-5">
+                  <div className="text-[11px] uppercase tracking-wider text-ink-3 font-semibold mb-2">Já viajou com você</div>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedContacts.map(c => (
+                      <button key={c.userId} onClick={() => doInvite(c.email)}
+                        className="group flex items-center gap-2 pl-1 pr-3 py-1 border border-rule rounded-full hover:border-ink hover:bg-paper-2 transition-colors disabled:opacity-40"
+                        disabled={loading}
+                        title={`Convidar ${c.email}`}>
+                        {c.avatarUrl
+                          ? <img src={c.avatarUrl} className="w-6 h-6 rounded-full object-cover" alt="" />
+                          : <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{background: c.color || 'var(--ink-2)'}}>{(c.name?.[0] || c.email?.[0] || '?').toUpperCase()}</span>
+                        }
+                        <span className="text-sm font-medium">{c.name || c.email}</span>
+                        <Icon name="plus" size={12} className="text-ink-3 group-hover:text-ink" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {invites.length > 0 && (

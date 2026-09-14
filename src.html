@@ -215,6 +215,16 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
     background: var(--paper-2);
   }
+  .leaflet-control-attribution {
+    font-size: 9px !important;
+    padding: 0 4px !important;
+    background: rgba(255,255,255,0.7) !important;
+    color: rgba(0,0,0,0.35) !important;
+    opacity: 0.5;
+    transition: opacity .2s;
+  }
+  .leaflet-control-attribution:hover { opacity: 1; }
+  .leaflet-control-attribution a { color: rgba(0,0,0,0.5) !important; text-decoration: none !important; }
   .leaflet-popup-content-wrapper {
     border-radius: 12px; background: white;
     border: none; box-shadow: var(--shadow-lg);
@@ -997,6 +1007,19 @@ function mapPointToRow(p, tripId, idx) {
   return { id: p.id, trip_id: tripId, name: p.name || '', lat: p.lat, lon: p.lon, kind: p.kind || 'point', note: p.note || '', order_idx: idx || 0 };
 }
 
+function optionFromRow(r, votes = [], comments = []) {
+  return {
+    id: r.id, type: r.type || 'hotel', name: r.name || '',
+    location: strOr(r.location), lat: r.lat, lon: r.lon,
+    price: r.price == null ? null : parseFloat(r.price),
+    currency: r.currency, priceUnit: strOr(r.price_unit),
+    link: strOr(r.link), imageUrl: strOr(r.image_url), notes: strOr(r.notes),
+    status: r.status || 'considering', linkedDayId: r.linked_day_id,
+    createdBy: r.created_by, createdAt: r.created_at,
+    votes, comments,
+  };
+}
+
 /* ==================== SUPABASE QUERIES ==================== */
 
 async function fetchMyTrips() {
@@ -1009,7 +1032,7 @@ async function fetchMyTrips() {
 }
 
 async function fetchTripFull(tripId) {
-  const [t, cats, travs, days, blocks, checks, quotes, mps, members] = await Promise.all([
+  const [t, cats, travs, days, blocks, checks, quotes, mps, members, opts, votes, comments] = await Promise.all([
     SB.from('trips').select('*').eq('id', tripId).single(),
     SB.from('categories').select('*').eq('trip_id', tripId).order('order_idx'),
     SB.from('travelers').select('*').eq('trip_id', tripId).order('order_idx'),
@@ -1019,6 +1042,9 @@ async function fetchTripFull(tripId) {
     SB.from('quotes').select('*').eq('trip_id', tripId).order('created_at'),
     SB.from('map_points').select('*').eq('trip_id', tripId).order('order_idx'),
     SB.from('trip_members').select('user_id, role, profiles:user_id(email, full_name, avatar_url, color)').eq('trip_id', tripId),
+    SB.from('options').select('*').eq('trip_id', tripId).order('created_at', { ascending: false }),
+    SB.from('option_votes').select('option_id, user_id, vote, options!inner(trip_id)').eq('options.trip_id', tripId),
+    SB.from('option_comments').select('id, option_id, user_id, text, created_at, options!inner(trip_id)').eq('options.trip_id', tripId).order('created_at'),
   ]);
   if (t.error) throw t.error;
   const trip = tripFromRow(t.data);
@@ -1034,7 +1060,74 @@ async function fetchTripFull(tripId) {
     userId: m.user_id, role: m.role,
     email: m.profiles?.email, name: m.profiles?.full_name, avatarUrl: m.profiles?.avatar_url, color: m.profiles?.color,
   }));
+  // Options + votes + comments
+  const votesByOpt = {}; (votes.data || []).forEach(v => { (votesByOpt[v.option_id] = votesByOpt[v.option_id] || []).push({ userId: v.user_id, vote: v.vote }); });
+  const commentsByOpt = {}; (comments.data || []).forEach(c => { (commentsByOpt[c.option_id] = commentsByOpt[c.option_id] || []).push({ id: c.id, userId: c.user_id, text: c.text, createdAt: c.created_at }); });
+  trip.options = (opts.data || []).map(o => optionFromRow(o, votesByOpt[o.id] || [], commentsByOpt[o.id] || []));
   return trip;
+}
+
+/* ==================== OPTIONS API (via SDK direto) ==================== */
+
+async function createOption(tripId, input, userId) {
+  const { data, error } = await SB.from('options').insert({
+    trip_id: tripId, type: input.type || 'hotel', name: input.name || 'Sem nome',
+    location: input.location || '', lat: input.lat || null, lon: input.lon || null,
+    price: input.price == null || input.price === '' ? null : Number(input.price),
+    currency: input.currency || 'BRL', price_unit: input.priceUnit || '',
+    link: input.link || '', image_url: input.imageUrl || '',
+    notes: input.notes || '', status: input.status || 'considering',
+    linked_day_id: input.linkedDayId || null,
+    created_by: userId,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateOptionRow(id, patch) {
+  const row = {};
+  if ('type' in patch) row.type = patch.type;
+  if ('name' in patch) row.name = patch.name;
+  if ('location' in patch) row.location = patch.location;
+  if ('lat' in patch) row.lat = patch.lat;
+  if ('lon' in patch) row.lon = patch.lon;
+  if ('price' in patch) row.price = patch.price == null || patch.price === '' ? null : Number(patch.price);
+  if ('currency' in patch) row.currency = patch.currency;
+  if ('priceUnit' in patch) row.price_unit = patch.priceUnit;
+  if ('link' in patch) row.link = patch.link;
+  if ('imageUrl' in patch) row.image_url = patch.imageUrl;
+  if ('notes' in patch) row.notes = patch.notes;
+  if ('status' in patch) row.status = patch.status;
+  if ('linkedDayId' in patch) row.linked_day_id = patch.linkedDayId;
+  const { error } = await SB.from('options').update(row).eq('id', id);
+  if (error) throw error;
+}
+
+async function deleteOptionRow(id) {
+  const { error } = await SB.from('options').delete().eq('id', id);
+  if (error) throw error;
+}
+
+async function setVote(optionId, userId, vote) {
+  // vote: 'up' | 'down' | 'love' | null (clearvote)
+  if (vote == null) {
+    const { error } = await SB.from('option_votes').delete().eq('option_id', optionId).eq('user_id', userId);
+    if (error) throw error;
+  } else {
+    const { error } = await SB.from('option_votes').upsert({ option_id: optionId, user_id: userId, vote });
+    if (error) throw error;
+  }
+}
+
+async function addComment(optionId, userId, text) {
+  const { data, error } = await SB.from('option_comments').insert({ option_id: optionId, user_id: userId, text }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteComment(id) {
+  const { error } = await SB.from('option_comments').delete().eq('id', id);
+  if (error) throw error;
 }
 
 /**
@@ -1314,6 +1407,9 @@ function StoreProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'map_points',       filter: `trip_id=eq.${activeTripId}` }, () => refetchActive())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blocks' },                                                   () => refetchActive())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_members',     filter: `trip_id=eq.${activeTripId}` }, () => refetchActive())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'options',          filter: `trip_id=eq.${activeTripId}` }, () => refetchActive())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'option_votes' },                                             () => refetchActive())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'option_comments' },                                          () => refetchActive())
       .subscribe();
     return () => { SB.removeChannel(channel); };
   }, [activeTripId]);
@@ -2160,6 +2256,7 @@ function AppShell() {
 
 const TRIP_TABS = [
   { id: 'dashboard', label: 'Visão geral', icon: 'dashboard' },
+  { id: 'options',   label: 'Decidir',     icon: 'star' },
   { id: 'itinerary', label: 'Roteiro',     icon: 'calendar' },
   { id: 'budget',    label: 'Orçamento',   icon: 'money' },
   { id: 'checklist', label: 'Checklist',   icon: 'checklist' },
@@ -2341,8 +2438,8 @@ function MobileTopBar({ trip, onOpenLibrary, onConvert }) {
 function MobileBottomNav({ tab, onTab, criticalCount }) {
   const items = [
     { id: 'dashboard', label: 'Painel',    icon: 'dashboard' },
+    { id: 'options',   label: 'Decidir',   icon: 'star' },
     { id: 'itinerary', label: 'Roteiro',   icon: 'calendar' },
-    { id: 'budget',    label: 'Custos',    icon: 'money' },
     { id: 'checklist', label: 'Lista',     icon: 'checklist' },
     { id: 'map',       label: 'Mapa',      icon: 'map' },
   ];
@@ -2814,6 +2911,7 @@ function TripView({ trip, onOpenLibrary, onConvert }) {
           <TripHeader trip={trip} daysToGo={daysToGo} />
           <div className="mt-8 fade-in-1" key={tab}>
             {tab === 'dashboard' && <DashboardTab trip={trip} fx={fx} onGo={setTab} />}
+            {tab === 'options'   && <OptionsTab trip={trip} fx={fx} />}
             {tab === 'budget'    && <BudgetTab trip={trip} fx={fx} />}
             {tab === 'itinerary' && <ItineraryTab trip={trip} fx={fx} />}
             {tab === 'checklist' && <ChecklistTab trip={trip} />}
@@ -4067,19 +4165,37 @@ function MapTab({ trip }) {
     if (!mapInstance.current || !markersLayer.current) return;
     markersLayer.current.clearLayers();
     const pts = trip.mapPoints || [];
-    if (pts.length === 0) return;
+    const options = (trip.options || []).filter(o => o.lat != null && o.lon != null && o.status !== 'discarded');
+
     pts.forEach((p, i) => {
       const icon = window.L.divIcon({ className: '', html: `<div class="tp-marker">${i + 1}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] });
       const m = window.L.marker([p.lat, p.lon], { icon }).addTo(markersLayer.current);
-      m.bindPopup(`<div style="font-family:Inter,sans-serif"><div style="font-weight:600;font-size:13px">${p.name}</div>${p.note ? `<div style="font-size:11px;color:#525252;margin-top:2px">${p.note}</div>` : ''}</div>`);
+      m.bindPopup(`<div style="font-family:'Plus Jakarta Sans',sans-serif"><div style="font-weight:700;font-size:13px">${p.name}</div>${p.note ? `<div style="font-size:11px;color:#717171;margin-top:2px">${p.note}</div>` : ''}</div>`);
     });
+
+    options.forEach(o => {
+      const typeInfo = OPTION_TYPES.find(t => t.id === o.type) || OPTION_TYPES[5];
+      const color = o.status === 'booked' ? '#008A05' : o.status === 'preferred' ? '#FF385C' : '#717171';
+      const icon = window.L.divIcon({
+        className: '',
+        html: `<div style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:white;border:2px solid ${color};border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.2);font-size:16px">${typeInfo.emoji}</div>`,
+        iconSize: [32, 32], iconAnchor: [16, 16],
+      });
+      const m = window.L.marker([o.lat, o.lon], { icon }).addTo(markersLayer.current);
+      const price = o.price != null ? `${fmtMoney(o.price, o.currency || trip.baseCurrency)}${o.priceUnit ? ' / ' + o.priceUnit : ''}` : '';
+      m.bindPopup(`<div style="font-family:'Plus Jakarta Sans',sans-serif"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#717171;font-weight:600">${typeInfo.emoji} ${typeInfo.label}</div><div style="font-weight:700;font-size:14px;margin-top:2px">${o.name}</div>${o.location ? `<div style="font-size:11px;color:#717171;margin-top:2px">📍 ${o.location}</div>` : ''}${price ? `<div style="font-size:12px;margin-top:4px;font-weight:600">${price}</div>` : ''}</div>`);
+    });
+
+    const allPts = [...pts, ...options];
     if (pts.length > 1) {
-      const poly = window.L.polyline(pts.map(p => [p.lat, p.lon]), { color: '#0A0A0A', weight: 2, dashArray: '4 4', opacity: 0.5 }).addTo(markersLayer.current);
-      mapInstance.current.fitBounds(poly.getBounds(), { padding: [40, 40] });
-    } else {
-      mapInstance.current.setView([pts[0].lat, pts[0].lon], 10);
+      const poly = window.L.polyline(pts.map(p => [p.lat, p.lon]), { color: '#222', weight: 2, dashArray: '4 4', opacity: 0.5 }).addTo(markersLayer.current);
+      mapInstance.current.fitBounds(poly.getBounds(), { padding: [50, 50] });
+    } else if (allPts.length > 1) {
+      mapInstance.current.fitBounds(window.L.latLngBounds(allPts.map(p => [p.lat, p.lon])), { padding: [50, 50] });
+    } else if (allPts.length === 1) {
+      mapInstance.current.setView([allPts[0].lat, allPts[0].lon], 12);
     }
-  }, [trip.mapPoints]);
+  }, [trip.mapPoints, trip.options]);
 
   const removePoint = (id) => updateTrip(trip.id, t => ({ ...t, mapPoints: t.mapPoints.filter(p => p.id !== id) }));
   const movePoint = (id, dir) => updateTrip(trip.id, t => {
@@ -4433,6 +4549,344 @@ function settleBalances(balances) {
 }
 
 /* ==================== NOTES TAB ==================== */
+
+/* ==================== OPTIONS TAB ==================== */
+
+const OPTION_TYPES = [
+  { id: 'hotel',       label: 'Hospedagem',  emoji: '🏨' },
+  { id: 'restaurant',  label: 'Restaurante', emoji: '🍽' },
+  { id: 'activity',    label: 'Passeio',     emoji: '🎯' },
+  { id: 'transport',   label: 'Transporte',  emoji: '🚗' },
+  { id: 'flight',      label: 'Voo',         emoji: '✈️' },
+  { id: 'other',       label: 'Outro',       emoji: '📌' },
+];
+
+const OPTION_STATUS = {
+  considering: { label: 'Analisando',  cls: 'chip', tone: 'text-ink-3' },
+  preferred:   { label: 'Preferido',   cls: 'chip-accent', tone: 'text-accent-d' },
+  booked:      { label: 'Reservado',   cls: 'chip-ok', tone: 'text-ok' },
+  discarded:   { label: 'Descartado',  cls: 'chip', tone: 'text-ink-4 line-through' },
+};
+
+function OptionsTab({ trip }) {
+  const { refetchActive } = useStore();
+  const [filter, setFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active'); // active = tudo menos descartado
+  const [modalOpt, setModalOpt] = useState(null); // 'new' | option
+
+  const list = (trip.options || []).filter(o => {
+    if (filter !== 'all' && o.type !== filter) return false;
+    if (statusFilter === 'active' && o.status === 'discarded') return false;
+    if (statusFilter === 'discarded' && o.status !== 'discarded') return false;
+    return true;
+  });
+
+  const byType = OPTION_TYPES.map(t => ({ ...t, items: list.filter(o => o.type === t.id) })).filter(t => filter === 'all' ? t.items.length > 0 : t.id === filter);
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Decidir juntos"
+        title="Opções em análise"
+        action={<Button variant="accent" size="sm" icon="plus" onClick={() => setModalOpt('new')}>Nova opção</Button>}
+      />
+
+      <div className="flex items-center gap-2 flex-wrap mb-5">
+        <button onClick={() => setFilter('all')} className={cx('chip cursor-pointer', filter === 'all' && 'chip-ink')}>Tudo ({trip.options?.length || 0})</button>
+        {OPTION_TYPES.map(t => {
+          const n = (trip.options || []).filter(o => o.type === t.id).length;
+          if (n === 0) return null;
+          return <button key={t.id} onClick={() => setFilter(t.id)} className={cx('chip cursor-pointer', filter === t.id && 'chip-ink')}>{t.emoji} {t.label} ({n})</button>;
+        })}
+        <span className="text-ink-4 mx-1">·</span>
+        <button onClick={() => setStatusFilter('active')} className={cx('chip cursor-pointer', statusFilter === 'active' && 'chip-ink')}>Ativas</button>
+        <button onClick={() => setStatusFilter('all')} className={cx('chip cursor-pointer', statusFilter === 'all' && 'chip-ink')}>Todas</button>
+        <button onClick={() => setStatusFilter('discarded')} className={cx('chip cursor-pointer', statusFilter === 'discarded' && 'chip-ink')}>Descartadas</button>
+      </div>
+
+      {(trip.options?.length || 0) === 0 ? (
+        <EmptyState
+          icon="star"
+          title="Nenhuma opção ainda"
+          description="Comece a listar hotéis, restaurantes ou passeios que estão considerando. Cada membro pode votar e comentar."
+          action={<Button variant="accent" icon="plus" onClick={() => setModalOpt('new')}>Adicionar primeira opção</Button>}
+        />
+      ) : list.length === 0 ? (
+        <div className="text-center py-10 text-sm text-ink-3">Nada nesse filtro.</div>
+      ) : (
+        <div className="space-y-6">
+          {byType.map(g => (
+            <div key={g.id}>
+              {filter === 'all' && <div className="text-[11px] uppercase tracking-wider text-ink-3 font-semibold mb-3">{g.emoji} {g.label} ({g.items.length})</div>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {g.items.map(o => <OptionCard key={o.id} trip={trip} option={o} onEdit={() => setModalOpt(o)} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpt && <OptionModal trip={trip} option={modalOpt === 'new' ? null : modalOpt} onClose={() => setModalOpt(null)} />}
+    </div>
+  );
+}
+
+function OptionCard({ trip, option, onEdit }) {
+  const { user } = useAuth();
+  const { refetchActive } = useStore();
+  const [commentText, setCommentText] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const myVote = option.votes.find(v => v.userId === user?.id)?.vote || null;
+  const counts = { up: 0, down: 0, love: 0 };
+  option.votes.forEach(v => { counts[v.vote] = (counts[v.vote] || 0) + 1; });
+
+  const typeInfo = OPTION_TYPES.find(t => t.id === option.type) || OPTION_TYPES[5];
+  const statusInfo = OPTION_STATUS[option.status] || OPTION_STATUS.considering;
+
+  const handleVote = async (v) => {
+    if (busy) return;
+    setBusy(true);
+    try { await setVote(option.id, user.id, myVote === v ? null : v); refetchActive(); }
+    catch (e) { alert('Erro ao votar: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    setBusy(true);
+    try { await updateOptionRow(option.id, { status: newStatus }); refetchActive(); }
+    catch (e) { alert('Erro: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    setBusy(true);
+    try {
+      await addComment(option.id, user.id, commentText.trim());
+      setCommentText(''); refetchActive();
+    } catch (e) { alert('Erro: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const handleDeleteComment = async (id) => {
+    if (!confirm('Apagar este comentário?')) return;
+    try { await deleteComment(id); refetchActive(); } catch (e) { alert(e.message); }
+  };
+
+  const memberOf = (uid) => trip.members?.find(m => m.userId === uid);
+  const voterAvatar = (uid) => {
+    const m = memberOf(uid);
+    if (!m) return null;
+    return m.avatarUrl ? m.avatarUrl : null;
+  };
+
+  return (
+    <article className={cx('card overflow-hidden', option.status === 'discarded' && 'opacity-60', option.status === 'preferred' && 'border-accent', option.status === 'booked' && 'border-ok')} style={option.status === 'preferred' ? {boxShadow: '0 0 0 2px var(--accent) inset'} : option.status === 'booked' ? {boxShadow: '0 0 0 2px var(--ok) inset'} : {}}>
+      {option.imageUrl && (
+        <div className="h-32 bg-paper-2 relative overflow-hidden">
+          <img src={option.imageUrl} alt="" className="w-full h-full object-cover" onError={e => e.target.style.display = 'none'} />
+        </div>
+      )}
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">{typeInfo.emoji}</span>
+              <span className="text-[10px] uppercase tracking-wider text-ink-3 font-semibold">{typeInfo.label}</span>
+              <span className={cx('chip', statusInfo.cls)}>{statusInfo.label}</span>
+            </div>
+            <h3 className={cx('text-lg font-bold text-ink leading-tight', option.status === 'discarded' && 'line-through')}>{option.name}</h3>
+            {option.location && <div className="text-xs text-ink-3 mt-1 flex items-center gap-1"><Icon name="mapPin" size={12} />{option.location}</div>}
+          </div>
+          <IconButton icon="edit" onClick={onEdit} title="Editar" />
+        </div>
+
+        {(option.price != null || option.link) && (
+          <div className="flex items-center justify-between mt-2 mb-3">
+            {option.price != null && (
+              <div>
+                <span className="text-xl font-bold num">{fmtMoney(option.price, option.currency || trip.baseCurrency)}</span>
+                {option.priceUnit && <span className="text-xs text-ink-3 ml-1">/ {option.priceUnit}</span>}
+              </div>
+            )}
+            {option.link && <a href={option.link} target="_blank" rel="noreferrer" className="text-sm text-accent-d hover:underline flex items-center gap-1"><Icon name="external" size={12} /> abrir</a>}
+          </div>
+        )}
+
+        {option.notes && <p className="text-sm text-ink-2 mb-3 whitespace-pre-wrap">{option.notes}</p>}
+
+        {/* Voting */}
+        <div className="flex items-center gap-1 mb-3">
+          <button onClick={() => handleVote('love')} disabled={busy} className={cx('flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border', myVote === 'love' ? 'bg-accents border-accent text-accent-d' : 'border-rule hover:border-ink')}>
+            ❤️ <span className="num">{counts.love || ''}</span>
+          </button>
+          <button onClick={() => handleVote('up')} disabled={busy} className={cx('flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border', myVote === 'up' ? 'bg-okbg border-ok text-ok' : 'border-rule hover:border-ink')}>
+            👍 <span className="num">{counts.up || ''}</span>
+          </button>
+          <button onClick={() => handleVote('down')} disabled={busy} className={cx('flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border', myVote === 'down' ? 'bg-badbg border-bad text-bad' : 'border-rule hover:border-ink')}>
+            👎 <span className="num">{counts.down || ''}</span>
+          </button>
+          <span className="ml-auto flex -space-x-1.5">
+            {option.votes.slice(0, 5).map(v => {
+              const m = memberOf(v.userId);
+              if (!m) return null;
+              return m.avatarUrl
+                ? <img key={v.userId} src={m.avatarUrl} className="w-6 h-6 rounded-full border-2 border-white object-cover" title={`${m.name || m.email} · ${v.vote}`} alt="" />
+                : <span key={v.userId} className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-bold" style={{background: m.color || 'var(--ink-2)'}} title={`${m.name || m.email} · ${v.vote}`}>{(m.name?.[0] || m.email?.[0] || '?').toUpperCase()}</span>;
+            })}
+          </span>
+        </div>
+
+        {/* Status changer */}
+        <div className="flex items-center gap-1 mb-3 flex-wrap">
+          {Object.entries(OPTION_STATUS).map(([key, s]) => (
+            <button key={key} onClick={() => handleStatusChange(key)} disabled={busy || option.status === key}
+              className={cx('text-[10px] px-2 py-1 rounded-full font-semibold uppercase tracking-wider transition-colors border', option.status === key ? 'border-ink bg-ink text-white' : 'border-rule text-ink-3 hover:border-ink hover:text-ink')}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Comments */}
+        {option.comments.length > 0 && (
+          <div className="space-y-2 mb-3 border-t border-rule pt-3">
+            {option.comments.map(c => {
+              const m = memberOf(c.userId);
+              const isMine = c.userId === user?.id;
+              return (
+                <div key={c.id} className="flex items-start gap-2 text-sm group">
+                  {m?.avatarUrl
+                    ? <img src={m.avatarUrl} className="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="" />
+                    : <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{background: m?.color || 'var(--ink-2)'}}>{(m?.name?.[0] || '?').toUpperCase()}</span>
+                  }
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-semibold">{m?.name || m?.email || '?'}</span>
+                      <span className="text-[10px] text-ink-4">{new Date(c.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="text-sm text-ink-2">{c.text}</div>
+                  </div>
+                  {isMine && <button onClick={() => handleDeleteComment(c.id)} className="opacity-0 group-hover:opacity-100 text-ink-4 hover:text-bad text-xs">✕</button>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <form onSubmit={handleComment} className="flex items-center gap-2 pt-2">
+          <TextInput value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Comentar..." />
+          <Button type="submit" size="sm" variant="primary" disabled={busy || !commentText.trim()}>Enviar</Button>
+        </form>
+      </div>
+    </article>
+  );
+}
+
+function OptionModal({ trip, option, onClose }) {
+  const { user } = useAuth();
+  const { refetchActive } = useStore();
+  const isNew = !option;
+  const [f, setF] = useState(() => option || { type: 'hotel', name: '', location: '', lat: null, lon: null, price: '', currency: trip.baseCurrency, priceUnit: '', link: '', imageUrl: '', notes: '', status: 'considering' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [geoBusy, setGeoBusy] = useState(false);
+
+  const save = async () => {
+    if (!f.name?.trim()) { setError('Nome é obrigatório'); return; }
+    setBusy(true); setError('');
+    try {
+      if (isNew) await createOption(trip.id, f, user.id);
+      else await updateOptionRow(option.id, f);
+      refetchActive();
+      onClose();
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const del = async () => {
+    if (!confirm('Apagar essa opção?')) return;
+    try { await deleteOptionRow(option.id); refetchActive(); onClose(); } catch (e) { alert(e.message); }
+  };
+
+  const geocodeLocation = async () => {
+    if (!f.location?.trim()) return;
+    setGeoBusy(true);
+    try {
+      const r = await geocode(f.location.trim());
+      if (r) setF({ ...f, lat: r.lat, lon: r.lon });
+      else alert('Não achei essa localização. Insira as coordenadas manualmente se souber.');
+    } catch (e) { alert('Erro na busca: ' + e.message); }
+    finally { setGeoBusy(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={isNew ? 'Nova opção' : 'Editar opção'} size="lg"
+      footer={
+        <>
+          {!isNew && <Button variant="danger" onClick={del}>Apagar</Button>}
+          <span className="flex-1"></span>
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button variant="accent" onClick={save} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button>
+        </>
+      }>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label>Tipo</Label>
+          <Select value={f.type} onChange={e => setF({ ...f, type: e.target.value })}>
+            {OPTION_TYPES.map(t => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+          </Select>
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select value={f.status} onChange={e => setF({ ...f, status: e.target.value })}>
+            {Object.entries(OPTION_STATUS).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
+          </Select>
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Nome</Label>
+          <TextInput value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="Ex: Grand Punta Hotel, La Bourgogne, Passeio de barco..." autoFocus />
+        </div>
+        <div className="sm:col-span-2">
+          <Label hint="cidade, endereço ou ponto de referência">Localização</Label>
+          <div className="flex gap-2">
+            <TextInput className="flex-1" value={f.location} onChange={e => setF({ ...f, location: e.target.value })} placeholder="Ex: Punta del Este, Uruguai" />
+            <Button size="sm" onClick={geocodeLocation} disabled={geoBusy || !f.location?.trim()}>{geoBusy ? '...' : 'Buscar mapa'}</Button>
+          </div>
+          {f.lat != null && f.lon != null && <div className="text-[11px] text-ink-3 mt-1 num">📍 {f.lat.toFixed(4)}, {f.lon.toFixed(4)}</div>}
+        </div>
+        <div>
+          <Label>Preço</Label>
+          <CurrencyInput value={f.price} onChange={e => setF({ ...f, price: e.target.value })} currency={f.currency || trip.baseCurrency} />
+        </div>
+        <div>
+          <Label>Por</Label>
+          <Select value={f.priceUnit} onChange={e => setF({ ...f, priceUnit: e.target.value })}>
+            <option value="">total</option>
+            <option value="noite">noite</option>
+            <option value="pessoa">pessoa</option>
+            <option value="dia">dia</option>
+            <option value="hora">hora</option>
+          </Select>
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Link</Label>
+          <TextInput type="url" value={f.link} onChange={e => setF({ ...f, link: e.target.value })} placeholder="https://booking.com/..." />
+        </div>
+        <div className="sm:col-span-2">
+          <Label hint="cover que aparece no card">URL da imagem</Label>
+          <TextInput type="url" value={f.imageUrl} onChange={e => setF({ ...f, imageUrl: e.target.value })} placeholder="https://..." />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Notas</Label>
+          <TextArea rows={3} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} placeholder="Observações, prós, contras, qualquer coisa..." />
+        </div>
+        {error && <div className="sm:col-span-2 text-sm text-bad bg-badbg px-3 py-2 rounded-lg">{error}</div>}
+      </div>
+    </Modal>
+  );
+}
 
 function NotesTab({ trip }) {
   const { updateTrip } = useStore();

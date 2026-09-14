@@ -8011,30 +8011,63 @@ function NotesTab({
   const {
     updateTrip
   } = useStore();
-  const [v, setV] = useState(trip.notes);
-  useEffect(() => setV(trip.notes), [trip.id, trip.notes]);
-  const save = () => updateTrip(trip.id, t => ({
-    ...t,
-    notes: v
-  }));
+  const [v, setV] = useState(trip.notes || '');
+  const [status, setStatus] = useState('saved'); // saved | dirty | saving
+  const timerRef = useRef(null);
+  const lastSavedRef = useRef(trip.notes || '');
+
+  // Sync quando trip muda (troca de viagem ou realtime)
+  useEffect(() => {
+    if (trip.notes !== lastSavedRef.current) {
+      setV(trip.notes || '');
+      lastSavedRef.current = trip.notes || '';
+      setStatus('saved');
+    }
+  }, [trip.id, trip.notes]);
+  const handleChange = e => {
+    const val = e.target.value;
+    setV(val);
+    setStatus('dirty');
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      setStatus('saving');
+      try {
+        await updateTrip(trip.id, t => ({
+          ...t,
+          notes: val
+        }));
+        lastSavedRef.current = val;
+        setStatus('saved');
+      } catch {
+        setStatus('dirty');
+      }
+    }, 800);
+  };
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
   return /*#__PURE__*/React.createElement("div", {
     className: "card p-5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between mb-2"
   }, /*#__PURE__*/React.createElement("h3", {
     className: "text-sm font-semibold text-ink"
-  }, "Anota\xE7\xF5es da viagem"), v !== trip.notes && /*#__PURE__*/React.createElement(Button, {
-    size: "sm",
-    variant: "primary",
-    onClick: save
-  }, "Salvar")), /*#__PURE__*/React.createElement(TextArea, {
+  }, "Di\xE1rio da viagem"), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-ink-3 flex items-center gap-1.5"
+  }, status === 'saving' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full bg-warn animate-pulse"
+  }), "salvando\u2026"), status === 'dirty' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full bg-warn"
+  }), "n\xE3o salvo"), status === 'saved' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full bg-ok"
+  }), "salvo"))), /*#__PURE__*/React.createElement(TextArea, {
     value: v,
-    onChange: e => setV(e.target.value),
+    onChange: handleChange,
     rows: 20,
     placeholder: "Coisas importantes, aprendizados, links, ideias soltas\u2026"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-inks mt-2"
-  }, v.length, " caracteres \xB7 autosalva ao clicar em Salvar"));
+    className: "text-xs text-ink-4 mt-2"
+  }, v.length, " caracteres \xB7 autosalva enquanto voc\xEA digita"));
 }
 
 /* ==================== CONVERTER MODAL ==================== */

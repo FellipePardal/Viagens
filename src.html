@@ -4225,27 +4225,13 @@ function MapTab({ trip }) {
     if (!window.L || !mapRef.current || mapInstance.current) return;
     const map = window.L.map(mapRef.current, { zoomControl: true, attributionControl: false }).setView([-15, -55], 3);
 
-    // Tile layer com fallback: tenta CartoDB, cai pra OSM se falhar
-    let tileErrors = 0;
-    const tiles = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
-      subdomains: 'abcd', maxZoom: 19,
+    // OpenStreetMap standard — sem watermark, sem key. Attribution obrigatorio.
+    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
       crossOrigin: true,
-    });
-    tiles.on('tileerror', () => {
-      tileErrors++;
-      if (tileErrors > 3 && !map._fallbackApplied) {
-        map._fallbackApplied = true;
-        console.warn('CartoDB tiles falhando, migrando para OpenStreetMap');
-        map.removeLayer(tiles);
-        window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          crossOrigin: true,
-        }).addTo(map);
-      }
-    });
-    tiles.addTo(map);
+    }).addTo(map);
 
-    window.L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap · Carto').addTo(map);
+    window.L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap contributors').addTo(map);
     mapInstance.current = map;
     markersLayer.current = window.L.layerGroup().addTo(map);
 

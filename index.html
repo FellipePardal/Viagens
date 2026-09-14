@@ -1613,8 +1613,35 @@ function AuthProvider({
     user: session?.user || null,
     profile,
     loading,
+    signInWithPassword: async (email, password) => {
+      const {
+        error
+      } = await SB.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) throw error;
+    },
+    signUp: async (email, password, fullName) => {
+      const inviteParam = new URLSearchParams(window.location.search).get('invite');
+      const redirectTo = window.location.origin + window.location.pathname + (inviteParam ? `?invite=${inviteParam}` : '');
+      const {
+        data,
+        error
+      } = await SB.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectTo,
+          data: {
+            full_name: fullName || email.split('@')[0]
+          }
+        }
+      });
+      if (error) throw error;
+      return data;
+    },
     signInWithEmail: async email => {
-      // Preserva ?invite=TOKEN no redirect
       const inviteParam = new URLSearchParams(window.location.search).get('invite');
       const redirectTo = window.location.origin + window.location.pathname + (inviteParam ? `?invite=${inviteParam}` : '');
       const {
@@ -1637,6 +1664,23 @@ function AuthProvider({
         options: {
           redirectTo
         }
+      });
+      if (error) throw error;
+    },
+    resetPassword: async email => {
+      const redirectTo = window.location.origin + window.location.pathname + '#type=recovery';
+      const {
+        error
+      } = await SB.auth.resetPasswordForEmail(email, {
+        redirectTo
+      });
+      if (error) throw error;
+    },
+    updatePassword: async newPassword => {
+      const {
+        error
+      } = await SB.auth.updateUser({
+        password: newPassword
       });
       if (error) throw error;
     },
@@ -2588,8 +2632,26 @@ function AuthGate({
     user,
     loading
   } = useAuth();
+  const [recovery, setRecovery] = useState(() => window.location.hash.includes('type=recovery'));
+
+  // Escuta evento de PASSWORD_RECOVERY do Supabase (dispara quando o link do email é processado)
+  useEffect(() => {
+    const {
+      data: sub
+    } = SB.auth.onAuthStateChange(event => {
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  const clearRecovery = () => {
+    setRecovery(false);
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  };
   if (loading) return /*#__PURE__*/React.createElement(LoadingScreen, {
     msg: "verificando sess\xE3o\u2026"
+  });
+  if (recovery && user) return /*#__PURE__*/React.createElement(RecoveryScreen, {
+    onDone: clearRecovery
   });
   if (!user) return /*#__PURE__*/React.createElement(LoginScreen, null);
   return children;
@@ -2611,27 +2673,74 @@ function StoreGate({
 }
 function LoginScreen() {
   const {
+    signInWithPassword,
+    signUp,
     signInWithEmail,
-    signInWithGoogle
+    resetPassword
   } = useAuth();
+  const [mode, setMode] = useState('login'); // login | signup | magic | forgot
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const reset = () => {
+    setPassword('');
+    setConfirmPw('');
+    setError('');
+    setInfo('');
+  };
   const submit = async e => {
     e.preventDefault();
-    if (!email.trim()) return;
     setLoading(true);
     setError('');
+    setInfo('');
     try {
-      await signInWithEmail(email.trim());
-      setSent(true);
+      if (mode === 'login') {
+        await signInWithPassword(email.trim(), password);
+      } else if (mode === 'signup') {
+        if (password.length < 6) throw new Error('Senha precisa de pelo menos 6 caracteres');
+        if (password !== confirmPw) throw new Error('As senhas não conferem');
+        const data = await signUp(email.trim(), password, fullName.trim());
+        if (data?.user && !data.session) {
+          setInfo('Cadastro feito. Verifique seu email para confirmar a conta antes de entrar.');
+        }
+      } else if (mode === 'magic') {
+        await signInWithEmail(email.trim());
+        setInfo('Link enviado para ' + email + '. Verifique sua caixa de entrada (e spam).');
+      } else if (mode === 'forgot') {
+        await resetPassword(email.trim());
+        setInfo('Enviamos um link para ' + email + '. Clique nele e defina sua nova senha.');
+      }
     } catch (err) {
-      setError(err.message || 'Erro ao enviar link');
+      let msg = err.message || 'Erro';
+      // Traduz erros comuns
+      if (msg.includes('Invalid login credentials')) msg = 'Email ou senha errados.';else if (msg.includes('User already registered')) msg = 'Esse email já tem conta. Entre com sua senha.';else if (msg.includes('Email rate limit')) msg = 'Muitos emails enviados. Aguarde ~1 hora ou use outro email.';else if (msg.includes('Email not confirmed')) msg = 'Você ainda não confirmou o email. Veja sua caixa de entrada.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
+  const titles = {
+    login: {
+      title: 'Entrar',
+      sub: 'Bem-vindo de volta.'
+    },
+    signup: {
+      title: 'Criar conta',
+      sub: 'Rápido, sem burocracia.'
+    },
+    magic: {
+      title: 'Link mágico',
+      sub: 'Sem senha. Só clicar no email.'
+    },
+    forgot: {
+      title: 'Recuperar senha',
+      sub: 'Enviamos um link pra você trocar.'
+    }
+  }[mode];
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2652,43 +2761,265 @@ function LoginScreen() {
     className: "text-4xl font-black tracking-tight"
   }, "Passageiro"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-inkm mt-3"
-  }, "Planeje suas viagens, sozinho ou junto.")), sent ? /*#__PURE__*/React.createElement("div", {
-    className: "card p-8 text-center card-elevated"
+  }, "Planeje suas viagens, sozinho ou junto.")), /*#__PURE__*/React.createElement("div", {
+    className: "card card-elevated p-6 sm:p-8"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-5xl mb-4"
-  }, "\u2709\uFE0F"), /*#__PURE__*/React.createElement("h2", {
-    className: "text-2xl font-bold"
-  }, "Link enviado"), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm text-inkm mt-3"
-  }, "Abra o email em ", /*#__PURE__*/React.createElement("b", {
-    className: "text-ink"
-  }, email), " e clique no link para entrar."), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-inkm mt-2"
-  }, "O link abre nesta mesma aba. Se n\xE3o achar, olha a caixa de spam."), /*#__PURE__*/React.createElement(Button, {
-    className: "mt-6",
-    onClick: () => setSent(false)
-  }, "Usar outro email")) : /*#__PURE__*/React.createElement("form", {
+    className: "mb-5"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-xl font-bold"
+  }, titles.title), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-inkm mt-1"
+  }, titles.sub)), /*#__PURE__*/React.createElement("form", {
     onSubmit: submit,
-    className: "card p-6 sm:p-8 space-y-4 card-elevated"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Email"), /*#__PURE__*/React.createElement(TextInput, {
+    className: "space-y-4"
+  }, mode === 'signup' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Nome"), /*#__PURE__*/React.createElement(TextInput, {
+    value: fullName,
+    onChange: e => setFullName(e.target.value),
+    placeholder: "Seu nome"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Email"), /*#__PURE__*/React.createElement(TextInput, {
     type: "email",
     value: email,
     onChange: e => setEmail(e.target.value),
     placeholder: "voce@exemplo.com",
     autoFocus: true,
-    required: true
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-inkm mt-2"
-  }, "Enviamos um link m\xE1gico. Sem senha, sem cadastro chato.")), error && /*#__PURE__*/React.createElement("div", {
-    className: "chip chip-bad"
+    required: true,
+    autoComplete: "email"
+  })), (mode === 'login' || mode === 'signup') && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-1.5"
+  }, /*#__PURE__*/React.createElement(Label, {
+    className: "mb-0"
+  }, "Senha"), mode === 'login' && /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      reset();
+      setMode('forgot');
+    },
+    className: "text-[11px] text-accent-d hover:underline font-semibold"
+  }, "Esqueci")), /*#__PURE__*/React.createElement(TextInput, {
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    required: true,
+    minLength: 6,
+    autoComplete: mode === 'login' ? 'current-password' : 'new-password'
+  })), mode === 'signup' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Confirmar senha"), /*#__PURE__*/React.createElement(TextInput, {
+    type: "password",
+    value: confirmPw,
+    onChange: e => setConfirmPw(e.target.value),
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    required: true,
+    autoComplete: "new-password"
+  })), error && /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-bad bg-badbg px-3 py-2 rounded-lg"
+  }, error), info && /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-ok bg-okbg px-3 py-2 rounded-lg"
+  }, info), /*#__PURE__*/React.createElement(Button, {
+    type: "submit",
+    variant: "accent",
+    className: "w-full",
+    disabled: loading || !email.trim() || (mode === 'login' || mode === 'signup') && !password
+  }, loading ? 'Aguarde…' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta' : mode === 'magic' ? 'Enviar link mágico' : 'Enviar link de recuperação')), /*#__PURE__*/React.createElement("div", {
+    className: "mt-6 pt-5 border-t border-rule text-center space-y-2"
+  }, mode === 'login' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-ink-3"
+  }, "Ainda n\xE3o tem conta? ", /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      reset();
+      setMode('signup');
+    },
+    className: "text-accent-d font-semibold hover:underline"
+  }, "Criar")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      reset();
+      setMode('magic');
+    },
+    className: "text-xs text-ink-3 hover:text-ink"
+  }, "Prefiro entrar com link no email")), mode === 'signup' && /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-ink-3"
+  }, "J\xE1 tem conta? ", /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      reset();
+      setMode('login');
+    },
+    className: "text-accent-d font-semibold hover:underline"
+  }, "Entrar")), (mode === 'magic' || mode === 'forgot') && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      reset();
+      setMode('login');
+    },
+    className: "text-sm text-ink-3 hover:text-ink"
+  }, "\u2190 Voltar ao login"))), /*#__PURE__*/React.createElement("p", {
+    className: "text-center text-xs text-ink-3 mt-6"
+  }, "Seus dados ficam no Supabase, criptografados e privados por padr\xE3o.")));
+}
+
+/* ==================== RESET PASSWORD SCREEN (após clicar no link do email) ==================== */
+
+function RecoveryScreen({
+  onDone
+}) {
+  const {
+    updatePassword
+  } = useAuth();
+  const [password, setPassword] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const submit = async e => {
+    e.preventDefault();
+    if (password.length < 6) {
+      setError('Senha precisa de pelo menos 6 caracteres');
+      return;
+    }
+    if (password !== confirmPw) {
+      setError('As senhas não conferem');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await updatePassword(password);
+      setDone(true);
+      setTimeout(() => onDone && onDone(), 1500);
+    } catch (err) {
+      setError(err.message || 'Erro ao atualizar senha');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center p-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-md"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center mb-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3",
+    style: {
+      background: 'var(--accent)'
+    }
+  }, "P"), /*#__PURE__*/React.createElement("h1", {
+    className: "text-2xl font-bold"
+  }, "Nova senha"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-ink-3 mt-1"
+  }, "Defina a senha que vai usar daqui pra frente.")), done ? /*#__PURE__*/React.createElement("div", {
+    className: "card card-elevated p-8 text-center"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-4xl mb-3"
+  }, "\u2713"), /*#__PURE__*/React.createElement("h2", {
+    className: "text-xl font-bold"
+  }, "Senha atualizada"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-ink-3 mt-2"
+  }, "Redirecionando\u2026")) : /*#__PURE__*/React.createElement("form", {
+    onSubmit: submit,
+    className: "card card-elevated p-6 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Nova senha"), /*#__PURE__*/React.createElement(TextInput, {
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    autoFocus: true,
+    required: true,
+    minLength: 6,
+    autoComplete: "new-password"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Confirmar"), /*#__PURE__*/React.createElement(TextInput, {
+    type: "password",
+    value: confirmPw,
+    onChange: e => setConfirmPw(e.target.value),
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    required: true,
+    autoComplete: "new-password"
+  })), error && /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-bad bg-badbg px-3 py-2 rounded-lg"
   }, error), /*#__PURE__*/React.createElement(Button, {
     type: "submit",
     variant: "accent",
     className: "w-full",
-    disabled: loading || !email.trim()
-  }, loading ? 'Enviando…' : 'Enviar link mágico'), /*#__PURE__*/React.createElement("div", {
-    className: "text-center text-xs text-inkm pt-2"
-  }, "Ao entrar voc\xEA concorda com armazenar seus dados no Supabase."))));
+    disabled: loading
+  }, loading ? 'Salvando…' : 'Salvar senha'))));
+}
+
+/* ==================== SET/CHANGE PASSWORD MODAL (usuário logado) ==================== */
+
+function SetPasswordModal({
+  open,
+  onClose
+}) {
+  const {
+    updatePassword
+  } = useAuth();
+  const [password, setPassword] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const reset = () => {
+    setPassword('');
+    setConfirmPw('');
+    setError('');
+    setDone(false);
+  };
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
+  const submit = async e => {
+    e.preventDefault();
+    if (password.length < 6) {
+      setError('Senha precisa de pelo menos 6 caracteres');
+      return;
+    }
+    if (password !== confirmPw) {
+      setError('As senhas não conferem');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await updatePassword(password);
+      setDone(true);
+      setTimeout(() => onClose(), 1200);
+    } catch (err) {
+      setError(err.message || 'Erro');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /*#__PURE__*/React.createElement(Modal, {
+    open: open,
+    onClose: onClose,
+    title: "Definir / alterar senha",
+    size: "sm",
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      onClick: onClose
+    }, "Cancelar"), /*#__PURE__*/React.createElement(Button, {
+      variant: "primary",
+      onClick: submit,
+      disabled: loading || done
+    }, done ? '✓ Salvo' : loading ? 'Salvando…' : 'Salvar'))
+  }, /*#__PURE__*/React.createElement("form", {
+    onSubmit: submit,
+    className: "space-y-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Nova senha"), /*#__PURE__*/React.createElement(TextInput, {
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    autoFocus: true,
+    autoComplete: "new-password",
+    minLength: 6
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, null, "Confirmar"), /*#__PURE__*/React.createElement(TextInput, {
+    type: "password",
+    value: confirmPw,
+    onChange: e => setConfirmPw(e.target.value),
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    autoComplete: "new-password"
+  })), error && /*#__PURE__*/React.createElement("div", {
+    className: "text-sm text-bad bg-badbg px-3 py-2 rounded-lg"
+  }, error), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-ink-3"
+  }, "Depois de salvar, voc\xEA pode entrar com email + essa senha, sem precisar de link no email.")));
 }
 function AppShell() {
   const {
@@ -2958,6 +3289,7 @@ function UserMenu() {
     signOut
   } = useAuth();
   const [open, setOpen] = useState(false);
+  const [pwModal, setPwModal] = useState(false);
   if (!user) return null;
   const name = profile?.full_name || user.email?.split('@')[0] || 'Você';
   const initial = (name[0] || 'U').toUpperCase();
@@ -2986,17 +3318,26 @@ function UserMenu() {
     size: 14,
     className: "text-ink-3"
   })), open && /*#__PURE__*/React.createElement("div", {
-    className: "absolute bottom-full left-0 right-0 mb-2 bg-white border border-rule rounded-xl overflow-hidden shadow-lg",
+    className: "absolute bottom-full left-0 right-0 mb-2 bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50",
     style: {
       boxShadow: 'var(--shadow-lg)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       setOpen(false);
+      setPwModal(true);
+    },
+    className: "w-full text-left px-4 py-3 hover:bg-paper-2 text-sm font-semibold border-b border-rule"
+  }, "Definir / alterar senha"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setOpen(false);
       signOut();
     },
     className: "w-full text-left px-4 py-3 hover:bg-paper-2 text-sm text-bad font-semibold"
-  }, "Sair")));
+  }, "Sair")), /*#__PURE__*/React.createElement(SetPasswordModal, {
+    open: pwModal,
+    onClose: () => setPwModal(false)
+  }));
 }
 function MobileTopBar({
   trip,

@@ -447,6 +447,61 @@ const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
+/* ==================== PORTAL DROPDOWN (escapa stacking context) ==================== */
+
+function PortalDropdown({ open, onClose, triggerRef, align = 'right', width, children }) {
+  const [pos, setPos] = useState(null);
+  const dropRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || !triggerRef?.current) return;
+    const update = () => {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({
+        top: r.bottom + 8,
+        left: align === 'right' ? r.right : r.left,
+        right: align === 'right' ? window.innerWidth - r.right : undefined,
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open, triggerRef, align]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (dropRef.current?.contains(e.target)) return;
+      if (triggerRef?.current?.contains(e.target)) return;
+      onClose();
+    };
+    const esc = (e) => e.key === 'Escape' && onClose();
+    setTimeout(() => document.addEventListener('click', close), 0);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('click', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open, onClose, triggerRef]);
+
+  if (!open || !pos) return null;
+
+  const style = { position: 'fixed', top: pos.top, zIndex: 9999, minWidth: width || 200 };
+  if (align === 'right') style.right = pos.right;
+  else style.left = pos.left;
+
+  return ReactDOM.createPortal(
+    <div ref={dropRef} className="bg-paper border border-rule rounded-xl overflow-hidden fade-in" style={{...style, boxShadow: 'var(--shadow-lg)'}}>
+      {children}
+    </div>,
+    document.body
+  );
+}
+
 /* ==================== TOAST (helper global + host) ==================== */
 
 const _toastListeners = new Set();
@@ -2701,37 +2756,29 @@ function UserMenuCompact() {
   const [open, setOpen] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const btnRef = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => { if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
   if (!user) return null;
   const name = profile?.full_name || user.email?.split('@')[0] || 'Você';
   const initial = (name[0] || 'U').toUpperCase();
   return (
-    <div className="relative" ref={btnRef}>
-      <button onClick={() => setOpen(v => !v)} className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-transparent hover:border-ink transition-colors" style={{background: profile?.color || 'var(--ink-2)'}} title={user.email}>
+    <div>
+      <button ref={btnRef} onClick={() => setOpen(v => !v)} className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-transparent hover:border-ink transition-colors" style={{background: profile?.color || 'var(--ink-2)'}} title={user.email}>
         {profile?.avatar_url
           ? <img src={profile.avatar_url} className="w-full h-full rounded-full object-cover" alt="" />
           : initial}
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 min-w-[240px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
-          <div className="px-4 py-3 border-b border-rule">
-            <div className="text-sm font-semibold truncate">{name}</div>
-            <div className="text-xs text-ink-3 truncate">{user.email}</div>
-          </div>
-          <button onClick={toggleTheme} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule flex items-center gap-3">
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} className="text-ink-3" />
-            <span className="flex-1">Modo {theme === 'dark' ? 'claro' : 'escuro'}</span>
-            <span className="text-[10px] text-ink-4 font-mono uppercase">{theme}</span>
-          </button>
-          <button onClick={() => { setOpen(false); setPwModal(true); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule">Definir / alterar senha</button>
-          <button onClick={() => { setOpen(false); signOut(); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm text-bad font-medium">Sair</button>
+      <PortalDropdown open={open} onClose={() => setOpen(false)} triggerRef={btnRef} align="right" width={240}>
+        <div className="px-4 py-3 border-b border-rule">
+          <div className="text-sm font-semibold truncate">{name}</div>
+          <div className="text-xs text-ink-3 truncate">{user.email}</div>
         </div>
-      )}
+        <button onClick={toggleTheme} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule flex items-center gap-3">
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} className="text-ink-3" />
+          <span className="flex-1">Modo {theme === 'dark' ? 'claro' : 'escuro'}</span>
+          <span className="text-[10px] text-ink-4 font-mono uppercase">{theme}</span>
+        </button>
+        <button onClick={() => { setOpen(false); setPwModal(true); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule">Definir / alterar senha</button>
+        <button onClick={() => { setOpen(false); signOut(); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm text-bad font-medium">Sair</button>
+      </PortalDropdown>
       <SetPasswordModal open={pwModal} onClose={() => setPwModal(false)} />
     </div>
   );
@@ -3310,25 +3357,17 @@ function TripView({ trip, onOpenLibrary, onConvert }) {
 
 function LibraryActionsMenu({ onImport, onBackup, onConvert }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
+  const triggerRef = useRef(null);
   return (
-    <div className="relative md:hidden" ref={ref}>
-      <button onClick={() => setOpen(v => !v)} className="p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors" title="Mais">
+    <div className="md:hidden">
+      <button ref={triggerRef} onClick={() => setOpen(v => !v)} className="p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors" title="Mais">
         <Icon name="menu" size={16} />
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 min-w-[180px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
-          <button onClick={() => { setOpen(false); onImport(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="upload" size={14} className="text-ink-3" />Importar JSON</button>
-          <button onClick={() => { setOpen(false); onBackup(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="download" size={14} className="text-ink-3" />Baixar backup</button>
-          {onConvert && <button onClick={() => { setOpen(false); onConvert(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="refresh" size={14} className="text-ink-3" />Conversor câmbio</button>}
-        </div>
-      )}
+      <PortalDropdown open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} align="right" width={180}>
+        <button onClick={() => { setOpen(false); onImport(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"><Icon name="upload" size={14} className="text-ink-3" />Importar JSON</button>
+        <button onClick={() => { setOpen(false); onBackup(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"><Icon name="download" size={14} className="text-ink-3" />Baixar backup</button>
+        {onConvert && <button onClick={() => { setOpen(false); onConvert(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"><Icon name="refresh" size={14} className="text-ink-3" />Conversor câmbio</button>}
+      </PortalDropdown>
     </div>
   );
 }
@@ -3469,13 +3508,7 @@ function downloadICS(trip) {
 
 function TripActionsMenu({ onShare, onExport, onPrint, onIcs, onEdit, onSettings, copied }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
+  const triggerRef = useRef(null);
 
   const items = [
     { label: copied ? 'Link copiado ✓' : 'Copiar link', icon: 'link',    onClick: onShare },
@@ -3488,22 +3521,20 @@ function TripActionsMenu({ onShare, onExport, onPrint, onIcs, onEdit, onSettings
   ];
 
   return (
-    <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(v => !v)} className="p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors" title="Mais ações">
+    <>
+      <button ref={triggerRef} onClick={() => setOpen(v => !v)} className="p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors" title="Mais ações">
         <Icon name="menu" size={16} />
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 min-w-[220px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
-          {items.map((it, i) => it.divider
-            ? <div key={i} className="border-t border-rule my-1"></div>
-            : <button key={i} onClick={() => { setOpen(false); it.onClick(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm">
-                <Icon name={it.icon} size={14} className="text-ink-3" />
-                <span>{it.label}</span>
-              </button>
-          )}
-        </div>
-      )}
-    </div>
+      <PortalDropdown open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} align="right" width={220}>
+        {items.map((it, i) => it.divider
+          ? <div key={i} className="border-t border-rule my-1"></div>
+          : <button key={i} onClick={() => { setOpen(false); it.onClick(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm">
+              <Icon name={it.icon} size={14} className="text-ink-3" />
+              <span>{it.label}</span>
+            </button>
+        )}
+      </PortalDropdown>
+    </>
   );
 }
 

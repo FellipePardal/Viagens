@@ -509,6 +509,69 @@ const uid = (prefix = '') => typeof crypto !== 'undefined' && crypto.randomUUID 
 const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join(' ');
 const clone = obj => JSON.parse(JSON.stringify(obj));
 
+/* ==================== PORTAL DROPDOWN (escapa stacking context) ==================== */
+
+function PortalDropdown({
+  open,
+  onClose,
+  triggerRef,
+  align = 'right',
+  width,
+  children
+}) {
+  const [pos, setPos] = useState(null);
+  const dropRef = useRef(null);
+  useEffect(() => {
+    if (!open || !triggerRef?.current) return;
+    const update = () => {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({
+        top: r.bottom + 8,
+        left: align === 'right' ? r.right : r.left,
+        right: align === 'right' ? window.innerWidth - r.right : undefined
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open, triggerRef, align]);
+  useEffect(() => {
+    if (!open) return;
+    const close = e => {
+      if (dropRef.current?.contains(e.target)) return;
+      if (triggerRef?.current?.contains(e.target)) return;
+      onClose();
+    };
+    const esc = e => e.key === 'Escape' && onClose();
+    setTimeout(() => document.addEventListener('click', close), 0);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('click', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open, onClose, triggerRef]);
+  if (!open || !pos) return null;
+  const style = {
+    position: 'fixed',
+    top: pos.top,
+    zIndex: 9999,
+    minWidth: width || 200
+  };
+  if (align === 'right') style.right = pos.right;else style.left = pos.left;
+  return ReactDOM.createPortal(/*#__PURE__*/React.createElement("div", {
+    ref: dropRef,
+    className: "bg-paper border border-rule rounded-xl overflow-hidden fade-in",
+    style: {
+      ...style,
+      boxShadow: 'var(--shadow-lg)'
+    }
+  }, children), document.body);
+}
+
 /* ==================== TOAST (helper global + host) ==================== */
 
 const _toastListeners = new Set();
@@ -3965,21 +4028,11 @@ function UserMenuCompact() {
   const [open, setOpen] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const btnRef = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = e => {
-      if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
   if (!user) return null;
   const name = profile?.full_name || user.email?.split('@')[0] || 'Você';
   const initial = (name[0] || 'U').toUpperCase();
-  return /*#__PURE__*/React.createElement("div", {
-    className: "relative",
-    ref: btnRef
-  }, /*#__PURE__*/React.createElement("button", {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
+    ref: btnRef,
     onClick: () => setOpen(v => !v),
     className: "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-transparent hover:border-ink transition-colors",
     style: {
@@ -3990,11 +4043,12 @@ function UserMenuCompact() {
     src: profile.avatar_url,
     className: "w-full h-full rounded-full object-cover",
     alt: ""
-  }) : initial), open && /*#__PURE__*/React.createElement("div", {
-    className: "absolute right-0 top-full mt-2 min-w-[240px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50",
-    style: {
-      boxShadow: 'var(--shadow-lg)'
-    }
+  }) : initial), /*#__PURE__*/React.createElement(PortalDropdown, {
+    open: open,
+    onClose: () => setOpen(false),
+    triggerRef: btnRef,
+    align: "right",
+    width: 240
   }, /*#__PURE__*/React.createElement("div", {
     className: "px-4 py-3 border-b border-rule"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4939,36 +4993,29 @@ function LibraryActionsMenu({
   onConvert
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = e => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
+  const triggerRef = useRef(null);
   return /*#__PURE__*/React.createElement("div", {
-    className: "relative md:hidden",
-    ref: ref
+    className: "md:hidden"
   }, /*#__PURE__*/React.createElement("button", {
+    ref: triggerRef,
     onClick: () => setOpen(v => !v),
     className: "p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors",
     title: "Mais"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "menu",
     size: 16
-  })), open && /*#__PURE__*/React.createElement("div", {
-    className: "absolute right-0 top-full mt-2 min-w-[180px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50",
-    style: {
-      boxShadow: 'var(--shadow-lg)'
-    }
+  })), /*#__PURE__*/React.createElement(PortalDropdown, {
+    open: open,
+    onClose: () => setOpen(false),
+    triggerRef: triggerRef,
+    align: "right",
+    width: 180
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       setOpen(false);
       onImport();
     },
-    className: "w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"
+    className: "w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "upload",
     size: 14,
@@ -4978,7 +5025,7 @@ function LibraryActionsMenu({
       setOpen(false);
       onBackup();
     },
-    className: "w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"
+    className: "w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "download",
     size: 14,
@@ -4988,7 +5035,7 @@ function LibraryActionsMenu({
       setOpen(false);
       onConvert();
     },
-    className: "w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"
+    className: "w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "refresh",
     size: 14,
@@ -5176,15 +5223,7 @@ function TripActionsMenu({
   copied
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = e => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
+  const triggerRef = useRef(null);
   const items = [{
     label: copied ? 'Link copiado ✓' : 'Copiar link',
     icon: 'link',
@@ -5212,21 +5251,20 @@ function TripActionsMenu({
     icon: 'settings',
     onClick: onSettings
   }];
-  return /*#__PURE__*/React.createElement("div", {
-    className: "relative",
-    ref: ref
-  }, /*#__PURE__*/React.createElement("button", {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    ref: triggerRef,
     onClick: () => setOpen(v => !v),
     className: "p-2 border border-rule-2 rounded-lg hover:border-ink hover:bg-paper-2 transition-colors",
     title: "Mais a\xE7\xF5es"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "menu",
     size: 16
-  })), open && /*#__PURE__*/React.createElement("div", {
-    className: "absolute right-0 top-full mt-2 min-w-[220px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50",
-    style: {
-      boxShadow: 'var(--shadow-lg)'
-    }
+  })), /*#__PURE__*/React.createElement(PortalDropdown, {
+    open: open,
+    onClose: () => setOpen(false),
+    triggerRef: triggerRef,
+    align: "right",
+    width: 220
   }, items.map((it, i) => it.divider ? /*#__PURE__*/React.createElement("div", {
     key: i,
     className: "border-t border-rule my-1"
@@ -5236,7 +5274,7 @@ function TripActionsMenu({
       setOpen(false);
       it.onClick();
     },
-    className: "w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"
+    className: "w-full text-left px-4 py-2.5 hover:bg-paper-3 flex items-center gap-3 text-sm"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: it.icon,
     size: 14,

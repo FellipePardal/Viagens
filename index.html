@@ -423,6 +423,19 @@ const BOOKING_TYPES = [{
 const uid = (prefix = '') => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join(' ');
 const clone = obj => JSON.parse(JSON.stringify(obj));
+
+/** Remove duplicatas por id preservando ordem (primeiro ocorre wins). */
+function uniqueById(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const item of arr) {
+    if (!item || !item.id) continue;
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -1864,7 +1877,7 @@ function StoreProvider({
         await acceptPendingInvites(user);
         const list = await fetchMyTrips();
         if (cancelled) return;
-        setTrips(list);
+        setTrips(uniqueById(list));
         const savedActive = localStorage.getItem('active_trip_id');
         const active = list.find(t => t.id === savedActive)?.id || list[0]?.id || null;
         setActiveTripId(active);
@@ -2013,7 +2026,7 @@ function StoreProvider({
   const refetchList = useCallback(async () => {
     try {
       const list = await fetchMyTrips();
-      setTrips(list);
+      setTrips(uniqueById(list));
     } catch (e) {
       console.error(e);
     }
@@ -2027,7 +2040,7 @@ function StoreProvider({
     activeTripFull: tripsById[activeTripId] || null,
     // store shape: { trips, activeTripId }
     store: {
-      trips: trips.map(t => tripsById[t.id] || t),
+      trips: uniqueById(trips.map(t => tripsById[t.id] || t)),
       // trips com dados completos onde já carregado
       activeTripId
     },
@@ -2081,10 +2094,10 @@ function StoreProvider({
           ...m,
           [created.id]: created
         }));
-        setTrips(prev => [{
+        setTrips(prev => uniqueById([{
           ...created,
           myRole: 'owner'
-        }, ...prev]);
+        }, ...prev]));
         setActiveTripId(created.id);
         return created.id;
       } catch (e) {
@@ -2150,10 +2163,10 @@ function StoreProvider({
             ...m,
             [created.id]: created
           }));
-          setTrips(prev => [{
+          setTrips(prev => uniqueById([{
             ...created,
             myRole: 'owner'
-          }, ...prev]);
+          }, ...prev]));
           results.push({
             ok: true,
             name: legacyTrip.name

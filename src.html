@@ -367,6 +367,19 @@ const cx = (...args) => args.filter(a => typeof a === 'string' && a.length).join
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
+/** Remove duplicatas por id preservando ordem (primeiro ocorre wins). */
+function uniqueById(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const item of arr) {
+    if (!item || !item.id) continue;
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
 function isoToday() { return new Date().toISOString().slice(0, 10); }
 function isoAddDays(iso, n) {
   const d = new Date(iso + 'T00:00:00');
@@ -1349,7 +1362,7 @@ function StoreProvider({ children }) {
         await acceptPendingInvites(user);
         const list = await fetchMyTrips();
         if (cancelled) return;
-        setTrips(list);
+        setTrips(uniqueById(list));
         const savedActive = localStorage.getItem('active_trip_id');
         const active = list.find(t => t.id === savedActive)?.id || list[0]?.id || null;
         setActiveTripId(active);
@@ -1428,7 +1441,7 @@ function StoreProvider({ children }) {
   }, [activeTripId]);
 
   const refetchList = useCallback(async () => {
-    try { const list = await fetchMyTrips(); setTrips(list); }
+    try { const list = await fetchMyTrips(); setTrips(uniqueById(list)); }
     catch (e) { console.error(e); }
   }, []);
 
@@ -1438,7 +1451,7 @@ function StoreProvider({ children }) {
     activeTripFull: tripsById[activeTripId] || null,
     // store shape: { trips, activeTripId }
     store: {
-      trips: trips.map(t => tripsById[t.id] || t),  // trips com dados completos onde já carregado
+      trips: uniqueById(trips.map(t => tripsById[t.id] || t)),  // trips com dados completos onde já carregado
       activeTripId,
     },
 
@@ -1471,7 +1484,7 @@ function StoreProvider({ children }) {
       try {
         const created = await createTripDB(seed, user.id);
         setTripsById(m => ({ ...m, [created.id]: created }));
-        setTrips(prev => [{ ...created, myRole: 'owner' }, ...prev]);
+        setTrips(prev => uniqueById([{ ...created, myRole: 'owner' }, ...prev]));
         setActiveTripId(created.id);
         return created.id;
       } catch (e) { console.error(e); setError(e.message); alert('Erro ao criar viagem: ' + e.message); return null; }
@@ -1520,7 +1533,7 @@ function StoreProvider({ children }) {
         try {
           const created = await createTripDB({ ...legacyTrip, id: uid() }, user.id);
           setTripsById(m => ({ ...m, [created.id]: created }));
-          setTrips(prev => [{ ...created, myRole: 'owner' }, ...prev]);
+          setTrips(prev => uniqueById([{ ...created, myRole: 'owner' }, ...prev]));
           results.push({ ok: true, name: legacyTrip.name });
         } catch (e) {
           console.error('migration falhou:', legacyTrip.name, e);

@@ -20,6 +20,15 @@
 <script src="https://cdn.tailwindcss.com"></script>
 
 <script>
+  // Aplica tema antes do React montar (evita flash)
+  try {
+    var t = localStorage.getItem('theme');
+    if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+
+<script>
   // Config Supabase (anon key é public por design; RLS controla acesso).
   window.SUPABASE_CONFIG = {
     url: 'https://urfmrjevdgwelqtautea.supabase.co',
@@ -32,26 +41,34 @@
     theme: {
       extend: {
         colors: {
-          // shadcn zinc palette
-          paper:    '#FFFFFF',
-          paperx:   '#FFFFFF',
-          paperd:   '#FAFAFA',
-          ink:      '#09090B',
-          ink2:     '#18181B',
-          inkm:     '#71717A',
-          inks:     '#A1A1AA',
-          rule:     '#E4E4E7',
-          rules:    '#D4D4D8',
-          accent:   '#FF385C',
-          accentd:  '#E11D48',
-          accents:  '#FFF1F2',
-          ok:       '#16A34A',
-          okbg:     '#F0FDF4',
-          warn:     '#CA8A04',
-          warnbg:   '#FEFCE8',
-          bad:      '#DC2626',
-          badbg:    '#FEF2F2',
-          stamp:    '#FF385C',
+          // CSS vars pra mudança de tema funcionar em bg-*/text-*/border-*
+          paper:    'var(--paper)',
+          paperx:   'var(--paper)',
+          paperd:   'var(--paper-2)',
+          'paper-2':'var(--paper-2)',
+          'paper-3':'var(--paper-3)',
+          ink:      'var(--ink)',
+          ink2:     'var(--ink-2)',
+          'ink-2':  'var(--ink-2)',
+          'ink-3':  'var(--ink-3)',
+          'ink-4':  'var(--ink-4)',
+          inkm:     'var(--ink-3)',
+          inks:     'var(--ink-4)',
+          rule:     'var(--rule)',
+          rules:    'var(--rule-2)',
+          'rule-2': 'var(--rule-2)',
+          accent:   'var(--accent)',
+          accentd:  'var(--accent-d)',
+          'accent-d':'var(--accent-d)',
+          accents:  'var(--accent-s)',
+          'accent-s':'var(--accent-s)',
+          ok:       'var(--ok)',
+          okbg:     'var(--okbg)',
+          warn:     'var(--warn)',
+          warnbg:   'var(--warnbg)',
+          bad:      'var(--bad)',
+          badbg:    'var(--badbg)',
+          stamp:    'var(--accent)',
         },
         fontFamily: {
           display: ['"Geist"','ui-sans-serif','system-ui','sans-serif'],
@@ -89,6 +106,37 @@
     --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
     --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+  }
+  html[data-theme="dark"] :root,
+  html[data-theme="dark"] body,
+  :root[data-theme="dark"] {
+    /* shadcn/ui zinc palette (dark) */
+    --paper: #09090B;
+    --paper-2: #18181B;
+    --paper-3: #27272A;
+    --ink: #FAFAFA;
+    --ink-2: #E4E4E7;
+    --ink-3: #A1A1AA;
+    --ink-4: #71717A;
+    --rule: #27272A;
+    --rule-2: #3F3F46;
+    --accent: #FF385C;
+    --accent-d: #FB7185;
+    --accent-s: #4A1520;
+    --ok: #22C55E;
+    --okbg: #052E16;
+    --warn: #EAB308;
+    --warnbg: #422006;
+    --bad: #EF4444;
+    --badbg: #450A0A;
+    --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.5);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.6), 0 4px 6px -4px rgba(0,0,0,0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.7), 0 8px 10px -6px rgba(0,0,0,0.5);
   }
 
   html, body { background: var(--paper); color: var(--ink); }
@@ -334,6 +382,19 @@
    ============================================================ */
 
 const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } = React;
+
+/* ==================== THEME ==================== */
+
+function useTheme() {
+  const [theme, setThemeState] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
+  const setTheme = useCallback((t) => {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('theme', t); } catch {}
+    setThemeState(t);
+  }, []);
+  const toggleTheme = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [theme, setTheme]);
+  return { theme, setTheme, toggleTheme };
+}
 
 /* ==================== CONSTANTES ==================== */
 
@@ -1646,6 +1707,7 @@ const Icon = ({ name, size = 16, className = '', strokeWidth = 1.75 }) => {
     external: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></>,
     menu: <><path d="M3 12h18M3 6h18M3 18h18"/></>,
     sun: <><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>,
+    moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>,
     move: <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>,
   };
 
@@ -1784,7 +1846,7 @@ function Modal({ open, onClose, children, title, footer, size = 'md' }) {
   const el = (
     <div className="fixed inset-0 overlay-in" style={{ backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999 }} onClick={onClose}>
       <div className="min-h-full flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto">
-        <div className={cx('w-full bg-white fade-in rounded-2xl overflow-hidden', width)}
+        <div className={cx('w-full bg-paper fade-in rounded-2xl overflow-hidden', width)}
              style={{boxShadow: '0 20px 60px rgba(0,0,0,0.35)'}}
              onClick={e => e.stopPropagation()}>
           {title && (
@@ -2320,7 +2382,7 @@ function Sidebar({ trip, tab, onTab, onOpenLibrary, onConvert }) {
       </div>
 
       <div className="mx-3 relative">
-        <button onClick={() => setSwitcherOpen(v => !v)} className="w-full text-left p-3 rounded-xl border border-rule hover:border-ink-3 transition-colors bg-white">
+        <button onClick={() => setSwitcherOpen(v => !v)} className="w-full text-left p-3 rounded-xl border border-rule hover:border-ink-3 transition-colors bg-paper">
           <div className="flex items-center justify-between gap-2 mb-1">
             <span className="text-[10px] uppercase tracking-wider text-ink-3 font-semibold">Viagem ativa</span>
             <Icon name={switcherOpen ? 'chevronUp' : 'chevronDown'} size={14} className="text-ink-3 flex-shrink-0" />
@@ -2333,7 +2395,7 @@ function Sidebar({ trip, tab, onTab, onOpenLibrary, onConvert }) {
           </div>
         </button>
         {switcherOpen && (
-          <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-rule rounded-xl z-30 max-h-72 overflow-hidden shadow-lg" style={{boxShadow:'var(--shadow-lg)'}}>
+          <div className="absolute left-0 right-0 top-full mt-2 bg-paper border border-rule rounded-xl z-30 max-h-72 overflow-hidden shadow-lg" style={{boxShadow:'var(--shadow-lg)'}}>
             {otherTrips.length === 0 && <div className="p-4 text-sm text-ink-3">Nenhuma outra viagem ativa.</div>}
             {otherTrips.map(t => (
               <button key={t.id} onClick={() => { setActive(t.id); setSwitcherOpen(false); }}
@@ -2381,6 +2443,7 @@ function Sidebar({ trip, tab, onTab, onOpenLibrary, onConvert }) {
 
 function UserMenuCompact() {
   const { user, profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   const btnRef = useRef(null);
@@ -2401,13 +2464,18 @@ function UserMenuCompact() {
           : initial}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 min-w-[240px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
+        <div className="absolute right-0 top-full mt-2 min-w-[240px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
           <div className="px-4 py-3 border-b border-rule">
             <div className="text-sm font-semibold truncate">{name}</div>
             <div className="text-xs text-ink-3 truncate">{user.email}</div>
           </div>
-          <button onClick={() => { setOpen(false); setPwModal(true); }} className="w-full text-left px-4 py-3 hover:bg-paper-2 text-sm font-semibold border-b border-rule">Definir / alterar senha</button>
-          <button onClick={() => { setOpen(false); signOut(); }} className="w-full text-left px-4 py-3 hover:bg-paper-2 text-sm text-bad font-semibold">Sair</button>
+          <button onClick={toggleTheme} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule flex items-center gap-3">
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} className="text-ink-3" />
+            <span className="flex-1">Modo {theme === 'dark' ? 'claro' : 'escuro'}</span>
+            <span className="text-[10px] text-ink-4 font-mono uppercase">{theme}</span>
+          </button>
+          <button onClick={() => { setOpen(false); setPwModal(true); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule">Definir / alterar senha</button>
+          <button onClick={() => { setOpen(false); signOut(); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm text-bad font-medium">Sair</button>
         </div>
       )}
       <SetPasswordModal open={pwModal} onClose={() => setPwModal(false)} />
@@ -2417,6 +2485,7 @@ function UserMenuCompact() {
 
 function UserMenu() {
   const { user, profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [pwModal, setPwModal] = useState(false);
   if (!user) return null;
@@ -2436,9 +2505,14 @@ function UserMenu() {
         <Icon name={open ? 'chevronUp' : 'chevronDown'} size={14} className="text-ink-3" />
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
-          <button onClick={() => { setOpen(false); setPwModal(true); }} className="w-full text-left px-4 py-3 hover:bg-paper-2 text-sm font-semibold border-b border-rule">Definir / alterar senha</button>
-          <button onClick={() => { setOpen(false); signOut(); }} className="w-full text-left px-4 py-3 hover:bg-paper-2 text-sm text-bad font-semibold">Sair</button>
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
+          <button onClick={toggleTheme} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule flex items-center gap-3">
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} className="text-ink-3" />
+            <span className="flex-1">Modo {theme === 'dark' ? 'claro' : 'escuro'}</span>
+            <span className="text-[10px] text-ink-4 font-mono uppercase">{theme}</span>
+          </button>
+          <button onClick={() => { setOpen(false); setPwModal(true); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm font-medium border-b border-rule">Definir / alterar senha</button>
+          <button onClick={() => { setOpen(false); signOut(); }} className="w-full text-left px-4 py-3 hover:bg-paper-3 text-sm text-bad font-medium">Sair</button>
         </div>
       )}
       <SetPasswordModal open={pwModal} onClose={() => setPwModal(false)} />
@@ -2619,8 +2693,8 @@ function LibraryView({ onOpen, onClose, onConvert }) {
       <main className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 py-8 relative">
         {store.trips.some(t => t.archived) && (
           <div className="mb-6 flex items-center gap-2 bg-paper-2 p-1 rounded-full w-fit">
-            <button onClick={() => setShowArchived(false)} className={cx('px-4 py-1.5 text-sm font-semibold rounded-full transition-colors', !showArchived ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink')}>Ativas ({activeCount})</button>
-            <button onClick={() => setShowArchived(true)} className={cx('px-4 py-1.5 text-sm font-semibold rounded-full transition-colors', showArchived ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink')}>Arquivadas ({archivedCount})</button>
+            <button onClick={() => setShowArchived(false)} className={cx('px-4 py-1.5 text-sm font-semibold rounded-full transition-colors', !showArchived ? 'bg-paper text-ink shadow-sm' : 'text-ink-3 hover:text-ink')}>Ativas ({activeCount})</button>
+            <button onClick={() => setShowArchived(true)} className={cx('px-4 py-1.5 text-sm font-semibold rounded-full transition-colors', showArchived ? 'bg-paper text-ink shadow-sm' : 'text-ink-3 hover:text-ink')}>Arquivadas ({archivedCount})</button>
           </div>
         )}
 
@@ -2691,7 +2765,7 @@ function TripCard({ trip, onOpen, onDuplicate, onArchive, onExport, onDelete, on
           </div>
           <span className={cx('chip', status.cls)}>{status.text}</span>
         </div>
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white/95 backdrop-blur rounded-full px-1 py-0.5 shadow-sm">
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-paper/95 backdrop-blur rounded-full px-1 py-0.5 shadow-sm">
           {isOwner && onInvite && (
             <IconButton icon="users" onClick={(e) => { e.stopPropagation(); onInvite(); }} title="Convidar" />
           )}
@@ -2974,7 +3048,7 @@ function LibraryActionsMenu({ onImport, onBackup, onConvert }) {
         <Icon name="menu" size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 min-w-[180px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
+        <div className="absolute right-0 top-full mt-2 min-w-[180px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
           <button onClick={() => { setOpen(false); onImport(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="upload" size={14} className="text-ink-3" />Importar JSON</button>
           <button onClick={() => { setOpen(false); onBackup(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="download" size={14} className="text-ink-3" />Baixar backup</button>
           {onConvert && <button onClick={() => { setOpen(false); onConvert(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm"><Icon name="refresh" size={14} className="text-ink-3" />Conversor câmbio</button>}
@@ -3009,7 +3083,7 @@ function TripActionsMenu({ onShare, onExport, onPrint, onEdit, onSettings, copie
         <Icon name="menu" size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 min-w-[220px] bg-white border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
+        <div className="absolute right-0 top-full mt-2 min-w-[220px] bg-paper border border-rule rounded-xl overflow-hidden shadow-lg z-50" style={{boxShadow: 'var(--shadow-lg)'}}>
           {items.map((it, i) => it.divider
             ? <div key={i} className="border-t border-rule my-1"></div>
             : <button key={i} onClick={() => { setOpen(false); it.onClick(); }} className="w-full text-left px-4 py-2.5 hover:bg-paper-2 flex items-center gap-3 text-sm">
